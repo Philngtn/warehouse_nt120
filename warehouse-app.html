@@ -2153,7 +2153,7 @@ async function exportToExcel() {
         XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
 
         // TODO (future): option to save to cloud storage instead of device
-        const fileName = `NgocThanh_${getDateStamp()}_OUT.xlsx`;
+        const fileName = `NgocThanh_${getDateTimeStamp()}_OUT.xlsx`;
         XLSX.writeFile(wb, fileName);
 
         msgEl.textContent = `✓ Downloaded ${products.length} products as ${fileName}`;
