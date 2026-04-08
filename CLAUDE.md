@@ -52,6 +52,15 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_public_anon_key
 ```
 
+## Git Workflow
+
+After making any file changes, automatically:
+1. `git add` the changed files
+2. `git commit` with a descriptive message
+3. `git push origin main`
+
+Do this without asking for confirmation unless the change is destructive or ambiguous.
+
 ## Constraints
 
 - Single HTML file must stay under 200KB
