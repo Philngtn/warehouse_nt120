@@ -1078,11 +1078,12 @@
         </div>
 
         <!-- EXCEL IMPORT/EXPORT MODAL -->
-        <div id="excel-modal" class="modal" style="display:none;">
-            <div class="modal-content" style="max-width:500px;max-height:90vh;overflow-y:auto;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="modal-backdrop" id="excel-modal">
+            <div class="modal">
+                <div class="modal-handle"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <h2>Import / Export</h2>
-                    <button type="button" class="modal-close" onclick="closeAllModals()">✕</button>
+                    <button type="button" onclick="closeAllModals()" style="background:none;border:none;color:var(--text-secondary);font-size:20px;cursor:pointer;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
                 </div>
 
                 <!-- TABS -->
@@ -1117,8 +1118,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
 <script>
 // ============================================================
@@ -1218,9 +1217,8 @@ function debounce(fn, ms) {
 }
 
 function closeAllModals() {
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        modal.style.display = 'none';
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+        backdrop.classList.remove('active');
     });
 }
 
@@ -2602,7 +2600,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Excel import/export
     $('excel-btn').addEventListener('click', () => {
-        $('excel-modal').style.display = 'flex';
+        $('excel-modal').classList.add('active');
         $('import-file').value = '';
         $('import-preview').style.display = 'none';
         $('import-btn').style.display = 'none';
