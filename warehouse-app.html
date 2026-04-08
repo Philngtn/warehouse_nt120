@@ -13,6 +13,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <!-- ZXing Barcode Scanner -->
     <script src="https://unpkg.com/@ArishSultan/zxing-library@latest/umd/index.min.js"></script>
+    <!-- SheetJS for Excel import/export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
         /* ============================================================
@@ -827,6 +829,7 @@
             <h1>NgocThanh</h1>
             <div class="user-info">
                 <span id="user-role-badge" class="role-badge">Admin</span>
+                <button class="btn-icon" id="excel-btn" title="Import / Export Excel" style="display:none;">📊</button>
                 <button class="btn-logout" id="logout-btn" title="Sign out">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 </button>
@@ -1073,6 +1076,47 @@
                 <button type="submit" class="btn btn-primary btn-block">Confirm Adjustment</button>
             </form>
         </div>
+
+        <!-- EXCEL IMPORT/EXPORT MODAL -->
+        <div id="excel-modal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width:500px;max-height:90vh;overflow-y:auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                    <h2>Import / Export</h2>
+                    <button type="button" class="modal-close" onclick="closeAllModals()">✕</button>
+                </div>
+
+                <!-- TABS -->
+                <div style="display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:10px;">
+                    <button type="button" class="tab-btn active" data-tab="export" style="flex:1;padding:10px;text-align:center;cursor:pointer;border:none;background:none;color:var(--accent);border-bottom:2px solid var(--accent);">Export</button>
+                    <button type="button" class="tab-btn" data-tab="import" style="flex:1;padding:10px;text-align:center;cursor:pointer;border:none;background:none;color:var(--text-secondary);">Import</button>
+                </div>
+
+                <!-- EXPORT TAB -->
+                <div id="tab-export" class="tab-content" style="display:block;">
+                    <div style="margin-bottom:15px;font-size:13px;color:var(--text-secondary);">
+                        <strong>Columns included:</strong><br>
+                        SKU, Name, Manufacturer, Manufacturer Code, Category, Qty, Location, Selling Price, Cost, Reorder Level, Reorder Qty, Model Year Start, Model Year End, Description, Discontinued
+                    </div>
+                    <button type="button" id="export-btn" class="btn btn-primary btn-block" style="cursor:pointer;">📥 Download Excel</button>
+                    <div id="export-msg" style="margin-top:10px;font-size:12px;text-align:center;display:none;"></div>
+                </div>
+
+                <!-- IMPORT TAB -->
+                <div id="tab-import" class="tab-content" style="display:none;">
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:8px;font-size:14px;">Select Excel or CSV file:</label>
+                        <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="width:100%;">
+                    </div>
+                    <div id="import-preview" style="margin-bottom:15px;font-size:12px;display:none;">
+                        <strong>Preview (first 5 rows):</strong>
+                        <div id="preview-content" style="background:var(--bg-secondary);padding:10px;border-radius:var(--radius-sm);margin-top:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:11px;"></div>
+                    </div>
+                    <button type="button" id="import-btn" class="btn btn-primary btn-block" style="cursor:pointer;display:none;">⬆️ Upload to Database</button>
+                    <div id="import-msg" style="margin-top:10px;font-size:12px;text-align:center;display:none;"></div>
+                    <div id="import-errors" style="margin-top:10px;font-size:11px;color:var(--danger);display:none;background:var(--bg-secondary);padding:8px;border-radius:var(--radius-sm);max-height:150px;overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1173,6 +1217,13 @@ function debounce(fn, ms) {
     };
 }
 
+function closeAllModals() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.style.display = 'none';
+    });
+}
+
 // ============================================================
 // AUTH
 // ============================================================
@@ -1269,6 +1320,9 @@ function enterApp() {
     const badge = $('user-role-badge');
     badge.textContent = state.userRole === 'admin' ? 'Admin' : 'Staff';
     badge.className = `role-badge ${state.userRole === 'admin' ? '' : 'staff'}`;
+
+    // Show Excel button for admin only
+    $('excel-btn').style.display = state.userRole === 'admin' ? '' : 'none';
 
     // Toggle cost visibility
     document.querySelectorAll('.admin-only').forEach(el => {
@@ -2057,6 +2111,280 @@ async function handleAdjust(e) {
 }
 
 // ============================================================
+// EXCEL IMPORT/EXPORT
+// ============================================================
+async function exportToExcel() {
+    const btn = $('export-btn');
+    const msgEl = $('export-msg');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Exporting...';
+    msgEl.style.display = 'none';
+
+    try {
+        if (!db) throw new Error('Database not configured');
+
+        // Query all active products
+        const { data: products, error } = await db
+            .from('inventory_admin_view')
+            .select('*')
+            .eq('is_active', true)
+            .order('sku');
+
+        if (error) throw error;
+        if (!products || products.length === 0) {
+            msgEl.textContent = 'No products to export';
+            msgEl.style.color = 'var(--text-secondary)';
+            msgEl.style.display = 'block';
+            return;
+        }
+
+        // Map to Excel columns
+        const rows = products.map(p => ({
+            'SKU': p.sku,
+            'Name': p.name,
+            'Manufacturer': p.manufacturer_name || '',
+            'Manufacturer Code': p.manufacturer_code || '',
+            'Category': p.category_name || '',
+            'Qty': p.qty || 0,
+            'Location': p.location || '',
+            'Selling Price': p.selling_price || '',
+            'Cost': p.cost || '',
+            'Reorder Level': p.reorder_level || 5,
+            'Reorder Qty': p.reorder_qty || 10,
+            'Model Year Start': p.model_year_start || '',
+            'Model Year End': p.model_year_end || '',
+            'Description': p.description || '',
+            'Discontinued': p.is_discontinued ? 'TRUE' : 'FALSE'
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+
+        const fileName = `NgocThanh_Inventory_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
+        msgEl.textContent = `✓ Downloaded ${products.length} products`;
+        msgEl.style.color = 'var(--success)';
+        msgEl.style.display = 'block';
+    } catch (err) {
+        console.error('Export error:', err);
+        msgEl.textContent = `✗ Export failed: ${err.message}`;
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '📥 Download Excel';
+    }
+}
+
+async function importFromExcel() {
+    const fileInput = $('import-file');
+    const btn = $('import-btn');
+    const msgEl = $('import-msg');
+    const errorsEl = $('import-errors');
+
+    if (!fileInput.files.length) {
+        msgEl.textContent = 'Select a file first';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Uploading...';
+    msgEl.style.display = 'none';
+    errorsEl.style.display = 'none';
+    errorsEl.innerHTML = '';
+
+    try {
+        if (!db) throw new Error('Database not configured');
+
+        const file = fileInput.files[0];
+        const wb = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    resolve(workbook);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.onerror = () => reject(new Error('File read failed'));
+            reader.readAsArrayBuffer(file);
+        });
+
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
+
+        if (!rows.length) throw new Error('No data in spreadsheet');
+
+        // Load reference data (manufacturers, categories)
+        const { data: manufacturers } = await db.from('manufacturers').select('id, name');
+        const { data: categories } = await db.from('product_categories').select('id, name');
+
+        const mfgMap = new Map(manufacturers?.map(m => [m.name?.toLowerCase(), m.id]) || []);
+        const catMap = new Map(categories?.map(c => [c.name?.toLowerCase(), c.id]) || []);
+
+        const errors = [];
+        let imported = 0, updated = 0;
+
+        // Process each row
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const rowNum = i + 2; // Header is row 1
+
+            try {
+                // Validate required fields
+                const sku = String(row['SKU'] || '').trim();
+                const name = String(row['Name'] || '').trim();
+
+                if (!sku) {
+                    errors.push(`Row ${rowNum}: SKU is required`);
+                    continue;
+                }
+                if (!name) {
+                    errors.push(`Row ${rowNum}: Name is required`);
+                    continue;
+                }
+
+                // Look up or create manufacturer
+                let manufacturerId = null;
+                const mfgName = String(row['Manufacturer'] || '').trim();
+                if (mfgName) {
+                    const mfgKey = mfgName.toLowerCase();
+                    if (mfgMap.has(mfgKey)) {
+                        manufacturerId = mfgMap.get(mfgKey);
+                    } else {
+                        // Create new manufacturer
+                        const { data: newMfg, error: mfgErr } = await db
+                            .from('manufacturers')
+                            .insert({ name: mfgName })
+                            .select();
+                        if (mfgErr) {
+                            errors.push(`Row ${rowNum}: Failed to create manufacturer "${mfgName}"`);
+                            continue;
+                        }
+                        if (newMfg?.length) {
+                            manufacturerId = newMfg[0].id;
+                            mfgMap.set(mfgKey, manufacturerId);
+                        }
+                    }
+                }
+
+                // Look up category
+                let categoryId = null;
+                const catName = String(row['Category'] || '').trim();
+                if (catName) {
+                    const catKey = catName.toLowerCase();
+                    categoryId = catMap.get(catKey) || null;
+                }
+
+                // Build inventory row
+                const inventoryRow = {
+                    sku: sku,
+                    name: name,
+                    manufacturer_id: manufacturerId,
+                    manufacturer_code: String(row['Manufacturer Code'] || '').trim() || null,
+                    category_id: categoryId,
+                    qty: parseInt(row['Qty']) || 0,
+                    location: String(row['Location'] || '').trim() || null,
+                    selling_price: parseFloat(row['Selling Price']) || null,
+                    cost: parseFloat(row['Cost']) || null,
+                    reorder_level: parseInt(row['Reorder Level']) || 5,
+                    reorder_qty: parseInt(row['Reorder Qty']) || 10,
+                    model_year_start: row['Model Year Start'] ? parseInt(row['Model Year Start']) : null,
+                    model_year_end: row['Model Year End'] ? parseInt(row['Model Year End']) : null,
+                    description: String(row['Description'] || '').trim() || null,
+                    is_discontinued: String(row['Discontinued'] || '').toUpperCase() === 'TRUE'
+                };
+
+                // Check if product exists
+                const { data: existing } = await db
+                    .from('inventory')
+                    .select('id, qty')
+                    .eq('sku', sku)
+                    .single();
+
+                // Upsert
+                const { error: upsertErr } = await db
+                    .from('inventory')
+                    .upsert(inventoryRow, { onConflict: 'sku' });
+
+                if (upsertErr) {
+                    errors.push(`Row ${rowNum} (${sku}): ${upsertErr.message}`);
+                    continue;
+                }
+
+                // Log transaction
+                if (existing) {
+                    updated++;
+                    if (inventoryRow.qty !== existing.qty) {
+                        const { error: txnErr } = await db
+                            .from('transactions')
+                            .insert({
+                                type: 'updated',
+                                sku: sku,
+                                quantity_change: inventoryRow.qty - existing.qty,
+                                qty_before: existing.qty,
+                                qty_after: inventoryRow.qty,
+                                user_email: state.user.email,
+                                user_action: 'excel_import',
+                                reason: 'Excel import'
+                            });
+                        if (txnErr) console.warn('Transaction log failed:', txnErr);
+                    }
+                } else {
+                    imported++;
+                    const { error: txnErr } = await db
+                        .from('transactions')
+                        .insert({
+                            type: 'created',
+                            sku: sku,
+                            quantity_change: inventoryRow.qty || 0,
+                            qty_before: 0,
+                            qty_after: inventoryRow.qty || 0,
+                            user_email: state.user.email,
+                            user_action: 'excel_import',
+                            reason: 'Excel import'
+                        });
+                    if (txnErr) console.warn('Transaction log failed:', txnErr);
+                }
+            } catch (err) {
+                errors.push(`Row ${rowNum}: ${err.message}`);
+            }
+        }
+
+        // Show results
+        const totalProcessed = imported + updated;
+        if (errors.length > 0) {
+            errorsEl.innerHTML = errors.join('<br>');
+            errorsEl.style.display = 'block';
+        }
+
+        msgEl.innerHTML = `✓ Imported: ${imported} | Updated: ${updated} | Total: ${totalProcessed}`;
+        msgEl.style.color = 'var(--success)';
+        msgEl.style.display = 'block';
+
+        // Reload inventory cache
+        if (totalProcessed > 0) {
+            await loadInventory();
+            showToast(`${totalProcessed} products processed`, 'success');
+        }
+    } catch (err) {
+        console.error('Import error:', err);
+        msgEl.textContent = `✗ Import failed: ${err.message}`;
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '⬆️ Upload to Database';
+    }
+}
+
+// ============================================================
 // BARCODE SCANNER
 // ============================================================
 async function startScanner() {
@@ -2271,6 +2599,67 @@ document.addEventListener('DOMContentLoaded', () => {
         $('login-form').style.display = '';
     });
     $('logout-btn').addEventListener('click', handleLogout);
+
+    // Excel import/export
+    $('excel-btn').addEventListener('click', () => {
+        $('excel-modal').style.display = 'flex';
+        $('import-file').value = '';
+        $('import-preview').style.display = 'none';
+        $('import-btn').style.display = 'none';
+        $('import-msg').style.display = 'none';
+        $('import-errors').style.display = 'none';
+        $('export-msg').style.display = 'none';
+    });
+
+    // Excel modal tabs
+    $$('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+            $$('.tab-btn').forEach(b => {
+                b.classList.toggle('active', b === btn);
+                b.style.color = b === btn ? 'var(--accent)' : 'var(--text-secondary)';
+                b.style.borderBottom = b === btn ? '2px solid var(--accent)' : 'none';
+            });
+            $$('.tab-content').forEach(content => {
+                content.style.display = content.id === `tab-${tabName}` ? 'block' : 'none';
+            });
+        });
+    });
+
+    // Excel export
+    $('export-btn').addEventListener('click', exportToExcel);
+
+    // Excel import file picker and preview
+    $('import-file').addEventListener('change', () => {
+        const file = $('import-file').files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(ws).slice(0, 5);
+
+                if (rows.length) {
+                    const previewHtml = rows.map((row, idx) =>
+                        `Row ${idx + 1}: ${JSON.stringify(row).substring(0, 100)}...`
+                    ).join('<br>');
+
+                    $('preview-content').innerHTML = previewHtml;
+                    $('import-preview').style.display = 'block';
+                    $('import-btn').style.display = 'block';
+                }
+            } catch (err) {
+                console.error('Preview failed:', err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // Excel import
+    $('import-btn').addEventListener('click', importFromExcel);
 
     // Navigation
     $$('.nav-btn').forEach(btn => {
