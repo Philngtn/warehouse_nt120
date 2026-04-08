@@ -1088,14 +1088,14 @@ const CONFIG = {
 // ============================================================
 // SUPABASE CLIENT
 // ============================================================
-let supabase = null;
+let db = null;
 
 function initSupabase() {
     if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
         console.warn('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.');
         return false;
     }
-    supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
     return true;
 }
 
@@ -1182,7 +1182,7 @@ async function handleLogin(e) {
     const errEl = $('login-error');
     const btn = $('login-btn');
 
-    if (!supabase) {
+    if (!db) {
         errEl.textContent = 'App not configured. Contact admin.';
         errEl.style.display = 'block';
         return;
@@ -1192,7 +1192,7 @@ async function handleLogin(e) {
     btn.innerHTML = '<span class="spinner"></span>';
     errEl.style.display = 'none';
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
 
     btn.disabled = false;
     btn.textContent = 'Sign In';
@@ -1214,7 +1214,7 @@ async function handleForgotPassword(e) {
     const msgEl = $('forgot-msg');
     const btn = $('forgot-btn');
 
-    if (!supabase) {
+    if (!db) {
         msgEl.textContent = 'App not configured. Contact admin.';
         msgEl.style.color = 'var(--danger)';
         msgEl.style.display = 'block';
@@ -1225,7 +1225,7 @@ async function handleForgotPassword(e) {
     btn.innerHTML = '<span class="spinner"></span>';
     msgEl.style.display = 'none';
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await db.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.href
     });
 
@@ -1243,7 +1243,7 @@ async function handleForgotPassword(e) {
 }
 
 async function handleLogout() {
-    if (supabase) await supabase.auth.signOut();
+    if (db) await db.auth.signOut();
     state.user = null;
     stopScanner();
     $('auth-screen').style.display = '';
@@ -1251,8 +1251,8 @@ async function handleLogout() {
 }
 
 async function checkSession() {
-    if (!supabase) return;
-    const { data: { session } } = await supabase.auth.getSession();
+    if (!db) return;
+    const { data: { session } } = await db.auth.getSession();
     if (session) {
         state.user = session.user;
         state.userRole = session.user.user_metadata?.role || 'staff';
@@ -1310,7 +1310,7 @@ function switchScreen(name) {
 // DATA LOADING
 // ============================================================
 async function loadInitialData() {
-    if (!supabase) return;
+    if (!db) return;
     showLoading();
     try {
         await Promise.all([
@@ -1328,7 +1328,7 @@ async function loadInitialData() {
 }
 
 async function loadCategories() {
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('product_categories')
         .select('*')
         .order('name');
@@ -1339,7 +1339,7 @@ async function loadCategories() {
 }
 
 async function loadManufacturers() {
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('manufacturers')
         .select('*')
         .order('name');
@@ -1351,7 +1351,7 @@ async function loadManufacturers() {
 async function loadInventory() {
     // Use view based on role
     const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from(viewName)
         .select('*')
         .order('name');
@@ -1361,12 +1361,12 @@ async function loadInventory() {
 }
 
 async function loadDashboardStats() {
-    const { count: totalSkus } = await supabase
+    const { count: totalSkus } = await db
         .from('inventory')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
 
-    const { count: lowStock } = await supabase
+    const { count: lowStock } = await db
         .from('inventory')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true)
@@ -1375,13 +1375,13 @@ async function loadDashboardStats() {
     // Today's transactions
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const { count: todayTxns } = await supabase
+    const { count: todayTxns } = await db
         .from('transactions')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today.toISOString());
 
     // Total items in stock
-    const { data: sumData } = await supabase
+    const { data: sumData } = await db
         .from('inventory')
         .select('qty')
         .eq('is_active', true);
@@ -1394,7 +1394,7 @@ async function loadDashboardStats() {
 }
 
 async function loadRecentActivity() {
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('transactions')
         .select('*')
         .order('created_at', { ascending: false })
@@ -1410,7 +1410,7 @@ async function loadActivity(reset = false) {
     const from = state.activityPage * state.activityPageSize;
     const to = from + state.activityPageSize - 1;
 
-    let query = supabase
+    let query = db
         .from('transactions')
         .select('*')
         .order('created_at', { ascending: false })
@@ -1637,13 +1637,13 @@ async function performDashboardSearch() {
 // PRODUCT LOOKUP (used by scan + manual)
 // ============================================================
 async function lookupProduct(query) {
-    if (!supabase || !query) return null;
+    if (!db || !query) return null;
 
     query = query.trim();
     const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
 
     // Try exact SKU match
-    let { data } = await supabase
+    let { data } = await db
         .from(viewName)
         .select('*')
         .eq('sku', query)
@@ -1653,7 +1653,7 @@ async function lookupProduct(query) {
     if (data && data.length) return data[0];
 
     // Try manufacturer code
-    ({ data } = await supabase
+    ({ data } = await db
         .from(viewName)
         .select('*')
         .eq('manufacturer_code', query)
@@ -1663,7 +1663,7 @@ async function lookupProduct(query) {
     if (data && data.length) return data[0];
 
     // Try name search (fuzzy)
-    ({ data } = await supabase
+    ({ data } = await db
         .from(viewName)
         .select('*')
         .ilike('name', `%${query}%`)
@@ -1774,8 +1774,8 @@ async function openProductDetail(sku) {
 }
 
 async function loadProductImages(sku) {
-    if (!supabase) return;
-    const { data } = await supabase
+    if (!db) return;
+    const { data } = await db
         .from('product_images')
         .select('*')
         .eq('sku', sku)
@@ -1802,10 +1802,10 @@ function closeModal(id) {
 async function showCompatibility(sku) {
     closeModal('product-modal');
 
-    if (!supabase) return;
+    if (!db) return;
     showLoading();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('cross_compatibility_matrix')
         .select('*')
         .or(`primary_sku.eq.${sku},compatible_sku.eq.${sku}`);
@@ -1884,7 +1884,7 @@ async function lookupForReceive(query) {
 
 async function handleReceive(e) {
     e.preventDefault();
-    if (!supabase || !state.selectedProduct) return;
+    if (!db || !state.selectedProduct) return;
 
     const product = state.selectedProduct;
     const receivedQty = parseInt($('receive-qty').value);
@@ -1910,7 +1910,7 @@ async function handleReceive(e) {
             updateData.manufacturer_id = newManufacturerId;
         }
 
-        const { error: updateErr } = await supabase
+        const { error: updateErr } = await db
             .from('inventory')
             .update(updateData)
             .eq('sku', product.sku);
@@ -1927,7 +1927,7 @@ async function handleReceive(e) {
         }
 
         // Log transaction
-        const { error: txnErr } = await supabase
+        const { error: txnErr } = await db
             .from('transactions')
             .insert({
                 type: 'received',
@@ -1992,7 +1992,7 @@ function showAdjustModal(sku) {
 
 async function handleAdjust(e) {
     e.preventDefault();
-    if (!supabase || !state.selectedProduct || state.userRole !== 'admin') return;
+    if (!db || !state.selectedProduct || state.userRole !== 'admin') return;
 
     const product = state.selectedProduct;
     const newQty = parseInt($('adjust-new-qty').value);
@@ -2015,14 +2015,14 @@ async function handleAdjust(e) {
         const qtyBefore = product.qty;
         const quantityChange = newQty - qtyBefore;
 
-        const { error: updateErr } = await supabase
+        const { error: updateErr } = await db
             .from('inventory')
             .update({ qty: newQty })
             .eq('sku', product.sku);
 
         if (updateErr) throw updateErr;
 
-        const { error: txnErr } = await supabase
+        const { error: txnErr } = await db
             .from('transactions')
             .insert({
                 type: 'adjusted',
@@ -2179,10 +2179,10 @@ function showScannedProduct(product) {
 // REALTIME SUBSCRIPTIONS
 // ============================================================
 function setupRealtime() {
-    if (!supabase) return;
+    if (!db) return;
 
     // Inventory changes
-    supabase
+    db
         .channel('inventory-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
             handleInventoryChange(payload);
@@ -2190,7 +2190,7 @@ function setupRealtime() {
         .subscribe();
 
     // Transaction changes (for activity feed)
-    supabase
+    db
         .channel('transaction-changes')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, (payload) => {
             handleNewTransaction(payload.new);
