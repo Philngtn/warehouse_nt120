@@ -1567,6 +1567,9 @@ function renderProductItem(product) {
 function renderActivityItem(txn) {
     const typeClass = `type-${txn.type}`;
     const qtyChange = txn.quantity_change > 0 ? `+${txn.quantity_change}` : txn.quantity_change;
+    const product = state.inventory.find(p => p.sku === txn.sku);
+    const productName = product ? escapeHtml(product.name) : '';
+    const manufacturerName = product ? escapeHtml(product.manufacturer_name || '') : '';
 
     return `
         <div class="activity-item" onclick="this.classList.toggle('expanded')">
@@ -1578,6 +1581,10 @@ function renderActivityItem(txn) {
                 <span class="sku-ref">${escapeHtml(txn.sku)}</span>
                 ${txn.quantity_change != null ? ` — Qty: ${qtyChange} (${txn.qty_before} → ${txn.qty_after})` : ''}
             </div>
+            ${productName || manufacturerName ? `
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:3px;padding-left:2px;">
+                ${productName}${productName && manufacturerName ? ' · ' : ''}${manufacturerName}
+            </div>` : ''}
             <div class="activity-detail">
                 <div>User: ${escapeHtml(txn.user_email)}</div>
                 ${txn.reason ? `<div>Reason: ${escapeHtml(txn.reason)}</div>` : ''}
