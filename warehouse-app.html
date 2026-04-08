@@ -2183,6 +2183,14 @@ async function importFromExcel() {
         return;
     }
 
+    const file = fileInput.files[0];
+    if (!/^NgocThanh_\d{2}_\d{2}_\d{4}_IN\.xlsx$/i.test(file.name)) {
+        msgEl.textContent = '✗ Invalid filename. Expected: NgocThanh_DD_MM_YYYY_IN.xlsx';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'block';
+        return;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Saving backup...';
     msgEl.style.display = 'none';
@@ -2641,7 +2649,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Excel import file picker and preview
     $('import-file').addEventListener('change', () => {
         const file = $('import-file').files[0];
+        const msgEl = $('import-msg');
+        $('import-preview').style.display = 'none';
+        $('import-btn').style.display = 'none';
+        msgEl.style.display = 'none';
         if (!file) return;
+
+        // Validate filename format: NgocThanh_DD_MM_YYYY_IN.xlsx
+        const validName = /^NgocThanh_\d{2}_\d{2}_\d{4}_IN\.xlsx$/i.test(file.name);
+        if (!validName) {
+            msgEl.textContent = `✗ Invalid filename. Expected: NgocThanh_DD_MM_YYYY_IN.xlsx`;
+            msgEl.style.color = 'var(--danger)';
+            msgEl.style.display = 'block';
+            $('import-file').value = '';
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (e) => {
