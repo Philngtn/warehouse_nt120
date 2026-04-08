@@ -1110,7 +1110,8 @@
                 <!-- IMPORT TAB -->
                 <div id="tab-import" class="tab-content" style="display:none;">
                     <div style="margin-bottom:15px;">
-                        <label style="display:block;margin-bottom:8px;font-size:14px;">Select Excel or CSV file:</label>
+                        <label style="display:block;margin-bottom:8px;font-size:14px;">Select import file:</label>
+                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Expected format: <code>NgocThanh_DD_MM_YYYY_IN.xlsx</code></div>
                         <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="width:100%;">
                     </div>
                     <div id="import-preview" style="margin-bottom:15px;font-size:12px;display:none;">
@@ -2083,6 +2084,45 @@ async function handleAdjust(e) {
 // ============================================================
 // EXCEL IMPORT/EXPORT
 // ============================================================
+function getDateStamp() {
+    const d = new Date();
+    const DD = String(d.getDate()).padStart(2, '0');
+    const MM = String(d.getMonth() + 1).padStart(2, '0');
+    const YYYY = d.getFullYear();
+    return `${DD}_${MM}_${YYYY}`;
+}
+
+function getDateTimeStamp() {
+    const d = new Date();
+    const DD = String(d.getDate()).padStart(2, '0');
+    const MM = String(d.getMonth() + 1).padStart(2, '0');
+    const YYYY = d.getFullYear();
+    const HH = String(d.getHours()).padStart(2, '0');
+    const MIN = String(d.getMinutes()).padStart(2, '0');
+    return `${DD}_${MM}_${YYYY}_${HH}_${MIN}`;
+}
+
+// Build workbook rows from product array (shared by export and backup)
+function buildInventoryRows(products) {
+    return products.map(p => ({
+        'SKU': p.sku,
+        'Name': p.name,
+        'Manufacturer': p.manufacturer_name || '',
+        'Manufacturer Code': p.manufacturer_code || '',
+        'Category': p.category_name || '',
+        'Qty': p.qty || 0,
+        'Location': p.location || '',
+        'Selling Price': p.selling_price || '',
+        'Cost': p.cost || '',
+        'Reorder Level': p.reorder_level || 5,
+        'Reorder Qty': p.reorder_qty || 10,
+        'Model Year Start': p.model_year_start || '',
+        'Model Year End': p.model_year_end || '',
+        'Description': p.description || '',
+        'Discontinued': p.is_discontinued ? 'TRUE' : 'FALSE'
+    }));
+}
+
 async function exportToExcel() {
     const btn = $('export-btn');
     const msgEl = $('export-msg');
@@ -2108,33 +2148,15 @@ async function exportToExcel() {
             return;
         }
 
-        // Map to Excel columns
-        const rows = products.map(p => ({
-            'SKU': p.sku,
-            'Name': p.name,
-            'Manufacturer': p.manufacturer_name || '',
-            'Manufacturer Code': p.manufacturer_code || '',
-            'Category': p.category_name || '',
-            'Qty': p.qty || 0,
-            'Location': p.location || '',
-            'Selling Price': p.selling_price || '',
-            'Cost': p.cost || '',
-            'Reorder Level': p.reorder_level || 5,
-            'Reorder Qty': p.reorder_qty || 10,
-            'Model Year Start': p.model_year_start || '',
-            'Model Year End': p.model_year_end || '',
-            'Description': p.description || '',
-            'Discontinued': p.is_discontinued ? 'TRUE' : 'FALSE'
-        }));
-
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(rows);
+        const ws = XLSX.utils.json_to_sheet(buildInventoryRows(products));
         XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
 
-        const fileName = `NgocThanh_Inventory_${new Date().toISOString().split('T')[0]}.xlsx`;
+        // TODO (future): option to save to cloud storage instead of device
+        const fileName = `NgocThanh_${getDateStamp()}_OUT.xlsx`;
         XLSX.writeFile(wb, fileName);
 
-        msgEl.textContent = `✓ Downloaded ${products.length} products`;
+        msgEl.textContent = `✓ Downloaded ${products.length} products as ${fileName}`;
         msgEl.style.color = 'var(--success)';
         msgEl.style.display = 'block';
     } catch (err) {
@@ -2162,13 +2184,30 @@ async function importFromExcel() {
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Uploading...';
+    btn.innerHTML = '<span class="spinner"></span> Saving backup...';
     msgEl.style.display = 'none';
     errorsEl.style.display = 'none';
     errorsEl.innerHTML = '';
 
     try {
         if (!db) throw new Error('Database not configured');
+
+        // Step 1: Export backup of current database before importing
+        // TODO (future): option to upload backup to cloud storage instead
+        const { data: backupProducts, error: backupErr } = await db
+            .from('inventory_admin_view')
+            .select('*')
+            .eq('is_active', true)
+            .order('sku');
+        if (backupErr) throw new Error(`Backup failed: ${backupErr.message}`);
+        if (backupProducts && backupProducts.length > 0) {
+            const bkWb = XLSX.utils.book_new();
+            const bkWs = XLSX.utils.json_to_sheet(buildInventoryRows(backupProducts));
+            XLSX.utils.book_append_sheet(bkWb, bkWs, 'Inventory');
+            XLSX.writeFile(bkWb, `BackUp_NgocThanh_${getDateTimeStamp()}.xlsx`);
+        }
+
+        btn.innerHTML = '<span class="spinner"></span> Uploading...';
 
         const file = fileInput.files[0];
         const wb = await new Promise((resolve, reject) => {
