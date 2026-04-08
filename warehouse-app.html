@@ -864,8 +864,6 @@
                 <input type="text" id="dashboard-search" placeholder="Quick search SKU, name, or manufacturer code...">
             </div>
 
-            <!-- Category pills -->
-            <div class="category-pills" id="dashboard-categories"></div>
 
             <!-- Recent Activity -->
             <div class="section-header">
@@ -1395,7 +1393,6 @@ async function loadCategories() {
         .order('name');
     if (error) throw error;
     state.categories = data || [];
-    renderCategoryPills();
     populateCategoryFilter();
 }
 
@@ -1506,40 +1503,7 @@ async function loadActivity(reset = false) {
 // ============================================================
 // RENDER FUNCTIONS
 // ============================================================
-function renderCategoryPills() {
-    const container = $('dashboard-categories');
-    let html = '<button class="pill active" data-cat="">All</button>';
-    state.categories.forEach(cat => {
-        html += `<button class="pill" data-cat="${cat.id}">${cat.icon || ''} ${escapeHtml(cat.name)}</button>`;
-    });
-    container.innerHTML = html;
 
-    container.addEventListener('click', (e) => {
-        const pill = e.target.closest('.pill');
-        if (!pill) return;
-        container.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        filterDashboardByCategory(pill.dataset.cat);
-    });
-}
-
-function filterDashboardByCategory(categoryId) {
-    const searchTerm = $('dashboard-search').value.trim().toLowerCase();
-    let filtered = state.inventory;
-
-    if (categoryId) {
-        filtered = filtered.filter(p => p.category_id === categoryId);
-    }
-    if (searchTerm) {
-        filtered = filtered.filter(p =>
-            (p.sku && p.sku.toLowerCase().includes(searchTerm)) ||
-            (p.name && p.name.toLowerCase().includes(searchTerm)) ||
-            (p.manufacturer_code && p.manufacturer_code.toLowerCase().includes(searchTerm))
-        );
-    }
-    // Show filtered as a product list below activity
-    // For dashboard we just re-show recent activity for now
-}
 
 function populateCategoryFilter() {
     const sel = $('filter-category');
