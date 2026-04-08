@@ -9,3 +9,6 @@ node_modules/
 dist/
 .DS_Store
 Thumbs.db
+dummy-inventory.xlsx
+package.json
+package-lock.json
