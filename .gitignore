@@ -1,0 +1,11 @@
+.env
+.env.local
+.env.production
+config.js
+*.sql
+*.key
+*.pem
+node_modules/
+dist/
+.DS_Store
+Thumbs.db

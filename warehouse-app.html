@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>NgocThanh Inventory</title>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- ZXing Barcode Scanner -->
+    <script src="https://unpkg.com/@ArishSultan/zxing-library@latest/umd/index.min.js"></script>
+
+    <style>
+        /* ============================================================
+           CSS RESET + VARIABLES
+           ============================================================ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-input: #1a1a3e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6a6a7a;
+            --accent: #0f9b58;
+            --accent-hover: #0d8a4e;
+            --accent-light: rgba(15, 155, 88, 0.15);
+            --danger: #e74c3c;
+            --danger-hover: #c0392b;
+            --warning: #f39c12;
+            --info: #3498db;
+            --border: #2a2a4a;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.3);
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --nav-height: 64px;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+        }
+
+        /* ============================================================
+           LAYOUT
+           ============================================================ */
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding-top: var(--safe-top);
+            padding-bottom: var(--safe-bottom);
+        }
+
+        .screen {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            padding-bottom: calc(var(--nav-height) + 16px + var(--safe-bottom));
+            -webkit-overflow-scrolling: touch;
+        }
+        .screen.active { display: flex; flex-direction: column; }
+
+        /* ============================================================
+           TOP BAR
+           ============================================================ */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            min-height: 52px;
+        }
+        .top-bar h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .top-bar .user-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .top-bar .role-badge {
+            background: var(--accent);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .top-bar .role-badge.staff { background: var(--info); }
+
+        /* ============================================================
+           BOTTOM NAV
+           ============================================================ */
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 8px 0;
+            padding-bottom: calc(8px + var(--safe-bottom));
+            height: calc(var(--nav-height) + var(--safe-bottom));
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 10px;
+            padding: 4px 12px;
+            cursor: pointer;
+            transition: color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .nav-btn svg { width: 24px; height: 24px; }
+        .nav-btn.active { color: var(--accent); }
+        .nav-btn:active { transform: scale(0.95); }
+
+        /* ============================================================
+           AUTH SCREEN
+           ============================================================ */
+        #auth-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 24px;
+            gap: 24px;
+        }
+        #auth-screen .logo {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--accent);
+            text-align: center;
+        }
+        #auth-screen .subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: -16px;
+        }
+        .auth-form {
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* ============================================================
+           FORM ELEMENTS
+           ============================================================ */
+        input, select, textarea {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+        }
+        input::placeholder { color: var(--text-muted); }
+        select { cursor: pointer; }
+        textarea { resize: vertical; min-height: 80px; }
+
+        label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: -8px;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 48px;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover:not(:disabled) { background: var(--danger-hover); }
+        .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-sm { padding: 8px 16px; font-size: 14px; min-height: 36px; }
+        .btn-block { width: 100%; }
+
+        /* ============================================================
+           CARDS
+           ============================================================ */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 16px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--accent);
+        }
+        .stat-card .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+        .stat-card.warning .stat-value { color: var(--warning); }
+        .stat-card.danger .stat-value { color: var(--danger); }
+
+        /* ============================================================
+           CATEGORY PILLS
+           ============================================================ */
+        .category-pills {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 4px 0;
+            margin-bottom: 12px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .category-pills::-webkit-scrollbar { display: none; }
+        .pill {
+            flex-shrink: 0;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .pill.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        /* ============================================================
+           PRODUCT LIST ITEMS
+           ============================================================ */
+        .product-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .product-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .product-item:active { border-color: var(--accent); }
+        .product-item .product-img {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-input);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .product-item .product-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .product-item .product-info { flex: 1; min-width: 0; }
+        .product-item .product-name {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .product-item .product-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        .product-item .product-qty {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .product-item .product-qty .qty-num {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .product-item .product-qty .qty-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+        .qty-low { color: var(--danger); }
+        .qty-ok { color: var(--accent); }
+        .qty-warn { color: var(--warning); }
+
+        /* ============================================================
+           SCANNER
+           ============================================================ */
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .scanner-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .scanner-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .scanner-crosshair {
+            width: 200px;
+            height: 120px;
+            border: 2px solid var(--accent);
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);
+        }
+        .scanner-status {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+        }
+
+        /* ============================================================
+           PRODUCT DETAIL CARD (after scan / click)
+           ============================================================ */
+        .detail-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+        .detail-card .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .detail-card .detail-sku {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .detail-card .detail-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        .detail-card .detail-manufacturer {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .detail-field label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .detail-field .field-value {
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        .detail-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .detail-actions .btn { flex: 1; }
+
+        /* ============================================================
+           ACTIVITY LOG
+           ============================================================ */
+        .activity-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .activity-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            cursor: pointer;
+        }
+        .activity-item .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .activity-type {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .type-received { background: rgba(15,155,88,0.2); color: var(--accent); }
+        .type-adjusted { background: rgba(243,156,18,0.2); color: var(--warning); }
+        .type-sold { background: rgba(231,76,60,0.2); color: var(--danger); }
+        .type-created { background: rgba(52,152,219,0.2); color: var(--info); }
+        .type-updated { background: rgba(52,152,219,0.2); color: var(--info); }
+        .type-returned { background: rgba(155,89,182,0.2); color: #9b59b6; }
+        .type-transferred { background: rgba(52,152,219,0.2); color: var(--info); }
+        .activity-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .activity-body {
+            margin-top: 8px;
+            font-size: 13px;
+        }
+        .activity-body .sku-ref {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .activity-detail {
+            display: none;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .activity-item.expanded .activity-detail { display: block; }
+
+        /* ============================================================
+           MODAL
+           ============================================================ */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal-backdrop.active { display: flex; }
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: var(--radius) var(--radius) 0 0;
+            width: 100%;
+            max-width: 480px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 24px 16px;
+            padding-bottom: calc(24px + var(--safe-bottom));
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .modal-handle {
+            width: 36px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+        .modal h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        /* ============================================================
+           SEARCH BOX
+           ============================================================ */
+        .search-box {
+            position: relative;
+            margin-bottom: 12px;
+        }
+        .search-box input {
+            padding-left: 44px;
+        }
+        .search-box svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+        }
+
+        /* ============================================================
+           FILTER BAR
+           ============================================================ */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .filter-bar select {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        /* ============================================================
+           COMPATIBILITY TABLE
+           ============================================================ */
+        .compat-list { margin-top: 12px; }
+        .compat-item {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+        }
+        .compat-item .compat-level {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .compat-full { background: rgba(15,155,88,0.2); color: var(--accent); }
+        .compat-partial { background: rgba(243,156,18,0.2); color: var(--warning); }
+        .compat-mod { background: rgba(231,76,60,0.2); color: var(--danger); }
+
+        /* ============================================================
+           TOAST NOTIFICATIONS
+           ============================================================ */
+        .toast-container {
+            position: fixed;
+            top: calc(var(--safe-top) + 60px);
+            left: 16px;
+            right: 16px;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            animation: toastIn 0.3s ease-out;
+            pointer-events: auto;
+        }
+        .toast.success { border-left: 4px solid var(--accent); }
+        .toast.error { border-left: 4px solid var(--danger); }
+        .toast.info { border-left: 4px solid var(--info); }
+        @keyframes toastIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* ============================================================
+           LOADING SPINNER
+           ============================================================ */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 250;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading-overlay.active { display: flex; }
+        .loading-overlay .spinner { width: 40px; height: 40px; border-width: 3px; }
+
+        /* ============================================================
+           SECTION HEADERS
+           ============================================================ */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .section-header h2 { font-size: 16px; font-weight: 700; }
+        .section-header a {
+            color: var(--accent);
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        /* ============================================================
+           EMPTY STATE
+           ============================================================ */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .empty-state p { font-size: 14px; }
+
+        /* ============================================================
+           RECEIVE FORM
+           ============================================================ */
+        .receive-form { display: flex; flex-direction: column; gap: 12px; }
+        .receive-current {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+        }
+        .receive-current .current-qty {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* Image gallery */
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .image-gallery .img-thumb {
+            aspect-ratio: 1;
+            border-radius: var(--radius-sm);
+            background: var(--bg-input);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .image-gallery .img-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        /* Hide cost for staff via JS (class toggled) */
+        .cost-hidden { display: none !important; }
+
+        /* Manual SKU input area */
+        .manual-input {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .manual-input input { flex: 1; }
+        .manual-input .btn { flex-shrink: 0; }
+
+        /* Logout button */
+        .btn-logout {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+        .btn-logout:hover { color: var(--danger); }
+
+        /* Year range display */
+        .year-range {
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--bg-input);
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- ============================================================
+         TOAST CONTAINER
+         ============================================================ -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ============================================================
+         LOADING OVERLAY
+         ============================================================ -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- ============================================================
+         AUTH SCREEN
+         ============================================================ -->
+    <div id="auth-screen">
+        <div class="logo">NgocThanh</div>
+        <div class="subtitle">Warehouse Inventory</div>
+        <form class="auth-form" id="login-form">
+            <input type="email" id="login-email" placeholder="Email" required autocomplete="email">
+            <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+            <button type="submit" class="btn btn-primary btn-block" id="login-btn">Sign In</button>
+            <div id="login-error" style="color:var(--danger);font-size:13px;text-align:center;display:none;"></div>
+        </form>
+    </div>
+
+    <!-- ============================================================
+         MAIN APP (hidden until auth)
+         ============================================================ -->
+    <div id="main-app" style="display:none;flex:1;display:none;flex-direction:column;height:100%;">
+
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <h1>NgocThanh</h1>
+            <div class="user-info">
+                <span id="user-role-badge" class="role-badge">Admin</span>
+                <button class="btn-logout" id="logout-btn" title="Sign out">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREENS -->
+        <div id="screen-dashboard" class="screen active">
+            <!-- Stats -->
+            <div class="stats-grid" id="dashboard-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total-skus">-</div>
+                    <div class="stat-label">Total SKUs</div>
+                </div>
+                <div class="stat-card warning" id="stat-low-card">
+                    <div class="stat-value" id="stat-low-stock">-</div>
+                    <div class="stat-label">Low Stock</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-today-txns">-</div>
+                    <div class="stat-label">Today's Txns</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total-value">-</div>
+                    <div class="stat-label">Total Items</div>
+                </div>
+            </div>
+
+            <!-- Category pills -->
+            <div class="category-pills" id="dashboard-categories"></div>
+
+            <!-- Quick search -->
+            <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="dashboard-search" placeholder="Quick search SKU, name, or manufacturer code...">
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="section-header">
+                <h2>Recent Activity</h2>
+                <a href="#" id="view-all-activity">View All</a>
+            </div>
+            <div class="activity-list" id="dashboard-activity"></div>
+        </div>
+
+        <!-- SCAN SCREEN -->
+        <div id="screen-scan" class="screen">
+            <div class="scanner-container" id="scanner-container">
+                <video id="scanner-video" autoplay playsinline></video>
+                <div class="scanner-overlay">
+                    <div class="scanner-crosshair"></div>
+                </div>
+                <div class="scanner-status" id="scanner-status">Initializing camera...</div>
+            </div>
+
+            <!-- Manual fallback -->
+            <div class="manual-input">
+                <input type="text" id="manual-sku-input" placeholder="Type SKU or manufacturer code...">
+                <button class="btn btn-primary btn-sm" id="manual-lookup-btn">Look Up</button>
+            </div>
+
+            <!-- Product detail (shown after scan) -->
+            <div id="scan-result" style="display:none;">
+                <div class="detail-card" id="scan-detail-card">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <div id="scan-empty" class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                <p>Scan a barcode or type a SKU to look up a product</p>
+            </div>
+        </div>
+
+        <!-- SEARCH SCREEN -->
+        <div id="screen-search" class="screen">
+            <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="search-input" placeholder="Search SKU, name, manufacturer code...">
+            </div>
+
+            <div class="filter-bar">
+                <select id="filter-category">
+                    <option value="">All Categories</option>
+                </select>
+                <select id="filter-manufacturer">
+                    <option value="">All Manufacturers</option>
+                </select>
+                <select id="filter-year">
+                    <option value="">All Years</option>
+                </select>
+            </div>
+
+            <div class="product-list" id="search-results"></div>
+            <div id="search-empty" class="empty-state" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <p>No products found</p>
+            </div>
+        </div>
+
+        <!-- RECEIVE SCREEN -->
+        <div id="screen-receive" class="screen">
+            <h2 style="margin-bottom:16px;">Receive Stock</h2>
+
+            <!-- Search for product first -->
+            <div class="manual-input">
+                <input type="text" id="receive-search" placeholder="Scan or type SKU...">
+                <button class="btn btn-primary btn-sm" id="receive-lookup-btn">Find</button>
+            </div>
+
+            <div id="receive-product-info" style="display:none;">
+                <div class="detail-card" style="margin-bottom:16px;">
+                    <div class="detail-sku" id="receive-sku"></div>
+                    <div class="detail-name" id="receive-name"></div>
+                    <div class="detail-manufacturer" id="receive-manufacturer"></div>
+
+                    <div class="receive-current" style="margin-top:12px;">
+                        <span style="color:var(--text-secondary);">Current Stock</span>
+                        <span class="current-qty" id="receive-current-qty">0</span>
+                    </div>
+                </div>
+
+                <form class="receive-form" id="receive-form">
+                    <label>Quantity Received</label>
+                    <input type="number" id="receive-qty" min="1" placeholder="Enter quantity" required>
+
+                    <label>Manufacturer (if changed)</label>
+                    <select id="receive-manufacturer-select">
+                        <option value="">No change</option>
+                    </select>
+
+                    <label>Notes (optional)</label>
+                    <textarea id="receive-notes" placeholder="Any notes about this shipment..."></textarea>
+
+                    <button type="submit" class="btn btn-primary btn-block" id="receive-confirm-btn">
+                        Confirm Receive
+                    </button>
+                </form>
+            </div>
+
+            <div id="receive-empty" class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                <p>Search for a product to receive stock</p>
+            </div>
+        </div>
+
+        <!-- ACTIVITY SCREEN -->
+        <div id="screen-activity" class="screen">
+            <h2 style="margin-bottom:16px;">Activity Log</h2>
+
+            <div class="filter-bar">
+                <select id="activity-filter-type">
+                    <option value="">All Types</option>
+                    <option value="received">Received</option>
+                    <option value="adjusted">Adjusted</option>
+                    <option value="sold">Sold</option>
+                    <option value="returned">Returned</option>
+                    <option value="created">Created</option>
+                    <option value="updated">Updated</option>
+                </select>
+                <input type="date" id="activity-filter-date" style="flex:1;">
+            </div>
+
+            <div class="activity-list" id="activity-list"></div>
+
+            <div class="pagination" id="activity-pagination">
+                <button class="btn btn-secondary btn-sm" id="activity-load-more" style="display:none;">Load More</button>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAV -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-screen="dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-btn" data-screen="scan">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2"/><path d="M17 3h2a2 2 0 012 2v2"/><path d="M21 17v2a2 2 0 01-2 2h-2"/><path d="M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                <span>Scan</span>
+            </button>
+            <button class="nav-btn" data-screen="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span>Search</span>
+            </button>
+            <button class="nav-btn" data-screen="receive">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                <span>Receive</span>
+            </button>
+            <button class="nav-btn" data-screen="activity">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Activity</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ============================================================
+         PRODUCT DETAIL MODAL
+         ============================================================ -->
+    <div class="modal-backdrop" id="product-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div id="modal-content">
+                <!-- Filled dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         COMPATIBILITY MODAL
+         ============================================================ -->
+    <div class="modal-backdrop" id="compat-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <h2>Cross-Compatibility</h2>
+            <div id="compat-content"></div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ADMIN ADJUST MODAL
+         ============================================================ -->
+    <div class="modal-backdrop" id="adjust-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <h2>Adjust Inventory</h2>
+            <form id="adjust-form" style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
+                <div class="receive-current">
+                    <span style="color:var(--text-secondary);">Current Stock</span>
+                    <span class="current-qty" id="adjust-current-qty">0</span>
+                </div>
+                <label>New Quantity</label>
+                <input type="number" id="adjust-new-qty" min="0" required>
+                <label>Reason</label>
+                <select id="adjust-reason" required>
+                    <option value="">Select reason...</option>
+                    <option value="Physical count correction">Physical count correction</option>
+                    <option value="Damaged goods">Damaged goods</option>
+                    <option value="Customer return">Customer return</option>
+                    <option value="Data entry error">Data entry error</option>
+                    <option value="Other">Other</option>
+                </select>
+                <label>Notes (optional)</label>
+                <textarea id="adjust-notes" placeholder="Additional details..."></textarea>
+                <button type="submit" class="btn btn-primary btn-block">Confirm Adjustment</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURATION
+// ============================================================
+
+const CONFIG = {
+    SUPABASE_URL: 'https://ilygragflzkvgpegjwaa.supabase.co',
+    SUPABASE_ANON_KEY: 'sb_publishable_UzW_f2jQbdLNbHf_P3GhLQ_6gt1x9vo',
+};
+
+// ============================================================
+// SUPABASE CLIENT
+// ============================================================
+let supabase = null;
+
+function initSupabase() {
+    if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
+        console.warn('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.');
+        return false;
+    }
+    supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    return true;
+}
+
+// ============================================================
+// APP STATE
+// ============================================================
+const state = {
+    user: null,
+    userRole: 'staff', // 'admin' or 'staff'
+    currentScreen: 'dashboard',
+    inventory: [],       // cached inventory
+    categories: [],
+    manufacturers: [],
+    transactions: [],
+    activityPage: 0,
+    activityPageSize: 50,
+    selectedProduct: null,
+    scannerActive: false,
+    codeReader: null,
+    searchDebounce: null,
+};
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function $(id) { return document.getElementById(id); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function showLoading() { $('loading-overlay').classList.add('active'); }
+function hideLoading() { $('loading-overlay').classList.remove('active'); }
+
+function showToast(message, type = 'info') {
+    const container = $('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => { toast.remove(); }, 3000);
+}
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatCurrency(val) {
+    if (val == null) return '-';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+}
+
+function qtyClass(qty, reorderLevel) {
+    if (qty <= 0) return 'qty-low';
+    if (qty <= (reorderLevel || 5)) return 'qty-warn';
+    return 'qty-ok';
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function debounce(fn, ms) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), ms);
+    };
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = $('login-email').value.trim();
+    const password = $('login-password').value;
+    const errEl = $('login-error');
+    const btn = $('login-btn');
+
+    if (!supabase) {
+        errEl.textContent = 'App not configured. Contact admin.';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    errEl.style.display = 'none';
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+
+    if (error) {
+        errEl.textContent = 'Invalid email or password';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    state.user = data.user;
+    state.userRole = data.user.user_metadata?.role || 'staff';
+    enterApp();
+}
+
+async function handleLogout() {
+    if (supabase) await supabase.auth.signOut();
+    state.user = null;
+    stopScanner();
+    $('auth-screen').style.display = '';
+    $('main-app').style.display = 'none';
+}
+
+async function checkSession() {
+    if (!supabase) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        state.user = session.user;
+        state.userRole = session.user.user_metadata?.role || 'staff';
+        enterApp();
+    }
+}
+
+function enterApp() {
+    $('auth-screen').style.display = 'none';
+    $('main-app').style.display = 'flex';
+
+    // Update role badge
+    const badge = $('user-role-badge');
+    badge.textContent = state.userRole === 'admin' ? 'Admin' : 'Staff';
+    badge.className = `role-badge ${state.userRole === 'admin' ? '' : 'staff'}`;
+
+    // Toggle cost visibility
+    document.querySelectorAll('.admin-only').forEach(el => {
+        el.classList.toggle('cost-hidden', state.userRole !== 'admin');
+    });
+
+    loadInitialData();
+    setupRealtime();
+    switchScreen('dashboard');
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function switchScreen(name) {
+    state.currentScreen = name;
+
+    // Update nav buttons
+    $$('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.screen === name);
+    });
+
+    // Update screens
+    $$('.screen').forEach(s => s.classList.remove('active'));
+    $(`screen-${name}`).classList.add('active');
+
+    // Screen-specific actions
+    if (name === 'scan') {
+        startScanner();
+    } else {
+        stopScanner();
+    }
+
+    if (name === 'activity') {
+        loadActivity(true);
+    }
+}
+
+// ============================================================
+// DATA LOADING
+// ============================================================
+async function loadInitialData() {
+    if (!supabase) return;
+    showLoading();
+    try {
+        await Promise.all([
+            loadCategories(),
+            loadManufacturers(),
+            loadInventory(),
+            loadDashboardStats(),
+            loadRecentActivity(),
+        ]);
+    } catch (err) {
+        console.error('Error loading data:', err);
+        showToast('Error loading data', 'error');
+    }
+    hideLoading();
+}
+
+async function loadCategories() {
+    const { data, error } = await supabase
+        .from('product_categories')
+        .select('*')
+        .order('name');
+    if (error) throw error;
+    state.categories = data || [];
+    renderCategoryPills();
+    populateCategoryFilter();
+}
+
+async function loadManufacturers() {
+    const { data, error } = await supabase
+        .from('manufacturers')
+        .select('*')
+        .order('name');
+    if (error) throw error;
+    state.manufacturers = data || [];
+    populateManufacturerFilter();
+}
+
+async function loadInventory() {
+    // Use view based on role
+    const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
+    const { data, error } = await supabase
+        .from(viewName)
+        .select('*')
+        .order('name');
+    if (!error) {
+        state.inventory = data || [];
+    }
+}
+
+async function loadDashboardStats() {
+    const { count: totalSkus } = await supabase
+        .from('inventory')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+    const { count: lowStock } = await supabase
+        .from('inventory')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .lte('qty', 5); // using 5 as default reorder level for count
+
+    // Today's transactions
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { count: todayTxns } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today.toISOString());
+
+    // Total items in stock
+    const { data: sumData } = await supabase
+        .from('inventory')
+        .select('qty')
+        .eq('is_active', true);
+    const totalItems = (sumData || []).reduce((sum, item) => sum + (item.qty || 0), 0);
+
+    $('stat-total-skus').textContent = totalSkus || 0;
+    $('stat-low-stock').textContent = lowStock || 0;
+    $('stat-today-txns').textContent = todayTxns || 0;
+    $('stat-total-value').textContent = totalItems.toLocaleString();
+}
+
+async function loadRecentActivity() {
+    const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+    if (!error) {
+        renderActivityList(data || [], 'dashboard-activity');
+    }
+}
+
+async function loadActivity(reset = false) {
+    if (reset) state.activityPage = 0;
+
+    const from = state.activityPage * state.activityPageSize;
+    const to = from + state.activityPageSize - 1;
+
+    let query = supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+    const typeFilter = $('activity-filter-type').value;
+    if (typeFilter) query = query.eq('type', typeFilter);
+
+    const dateFilter = $('activity-filter-date').value;
+    if (dateFilter) {
+        const startOfDay = new Date(dateFilter);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(dateFilter);
+        endOfDay.setHours(23, 59, 59, 999);
+        query = query.gte('created_at', startOfDay.toISOString()).lte('created_at', endOfDay.toISOString());
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        showToast('Error loading activity', 'error');
+        return;
+    }
+
+    if (reset) {
+        $('activity-list').innerHTML = '';
+    }
+
+    renderActivityList(data || [], 'activity-list');
+    $('activity-load-more').style.display = (data && data.length === state.activityPageSize) ? '' : 'none';
+}
+
+// ============================================================
+// RENDER FUNCTIONS
+// ============================================================
+function renderCategoryPills() {
+    const container = $('dashboard-categories');
+    let html = '<button class="pill active" data-cat="">All</button>';
+    state.categories.forEach(cat => {
+        html += `<button class="pill" data-cat="${cat.id}">${cat.icon || ''} ${escapeHtml(cat.name)}</button>`;
+    });
+    container.innerHTML = html;
+
+    container.addEventListener('click', (e) => {
+        const pill = e.target.closest('.pill');
+        if (!pill) return;
+        container.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        filterDashboardByCategory(pill.dataset.cat);
+    });
+}
+
+function filterDashboardByCategory(categoryId) {
+    const searchTerm = $('dashboard-search').value.trim().toLowerCase();
+    let filtered = state.inventory;
+
+    if (categoryId) {
+        filtered = filtered.filter(p => p.category_id === categoryId);
+    }
+    if (searchTerm) {
+        filtered = filtered.filter(p =>
+            (p.sku && p.sku.toLowerCase().includes(searchTerm)) ||
+            (p.name && p.name.toLowerCase().includes(searchTerm)) ||
+            (p.manufacturer_code && p.manufacturer_code.toLowerCase().includes(searchTerm))
+        );
+    }
+    // Show filtered as a product list below activity
+    // For dashboard we just re-show recent activity for now
+}
+
+function populateCategoryFilter() {
+    const sel = $('filter-category');
+    sel.innerHTML = '<option value="">All Categories</option>';
+    state.categories.forEach(cat => {
+        sel.innerHTML += `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`;
+    });
+}
+
+function populateManufacturerFilter() {
+    const sel = $('filter-manufacturer');
+    sel.innerHTML = '<option value="">All Manufacturers</option>';
+    state.manufacturers.forEach(m => {
+        sel.innerHTML += `<option value="${m.id}">${escapeHtml(m.name)}</option>`;
+    });
+
+    // Also populate receive manufacturer dropdown
+    const recSel = $('receive-manufacturer-select');
+    recSel.innerHTML = '<option value="">No change</option>';
+    state.manufacturers.forEach(m => {
+        recSel.innerHTML += `<option value="${m.id}">${escapeHtml(m.name)}</option>`;
+    });
+}
+
+function populateYearFilter() {
+    const sel = $('filter-year');
+    const currentYear = new Date().getFullYear();
+    sel.innerHTML = '<option value="">All Years</option>';
+    for (let y = currentYear; y >= 1990; y--) {
+        sel.innerHTML += `<option value="${y}">${y}</option>`;
+    }
+}
+
+function renderProductItem(product) {
+    const qtyClz = qtyClass(product.qty, product.reorder_level);
+    const catIcon = product.category_icon || '📦';
+    const imgHtml = product.image_url
+        ? `<img src="${escapeHtml(product.image_url)}" alt="" loading="lazy">`
+        : catIcon;
+
+    return `
+        <div class="product-item" data-sku="${escapeHtml(product.sku)}" onclick="openProductDetail('${escapeHtml(product.sku)}')">
+            <div class="product-img">${imgHtml}</div>
+            <div class="product-info">
+                <div class="product-name">${escapeHtml(product.name)}</div>
+                <div class="product-meta">
+                    ${escapeHtml(product.sku)}
+                    ${product.manufacturer_name ? ' · ' + escapeHtml(product.manufacturer_name) : ''}
+                    ${product.location ? ' · ' + escapeHtml(product.location) : ''}
+                </div>
+            </div>
+            <div class="product-qty">
+                <div class="qty-num ${qtyClz}">${product.qty}</div>
+                <div class="qty-label">in stock</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderActivityItem(txn) {
+    const typeClass = `type-${txn.type}`;
+    const qtyChange = txn.quantity_change > 0 ? `+${txn.quantity_change}` : txn.quantity_change;
+
+    return `
+        <div class="activity-item" onclick="this.classList.toggle('expanded')">
+            <div class="activity-header">
+                <span class="activity-type ${typeClass}">${txn.type}</span>
+                <span class="activity-time">${formatDate(txn.created_at)}</span>
+            </div>
+            <div class="activity-body">
+                <span class="sku-ref">${escapeHtml(txn.sku)}</span>
+                ${txn.quantity_change != null ? ` — Qty: ${qtyChange} (${txn.qty_before} → ${txn.qty_after})` : ''}
+            </div>
+            <div class="activity-detail">
+                <div>User: ${escapeHtml(txn.user_email)}</div>
+                ${txn.reason ? `<div>Reason: ${escapeHtml(txn.reason)}</div>` : ''}
+                ${txn.notes ? `<div>Notes: ${escapeHtml(txn.notes)}</div>` : ''}
+                ${txn.manufacturer_changed_from ? `<div>Manufacturer changed: ${escapeHtml(txn.manufacturer_changed_from)} → ${escapeHtml(txn.manufacturer_changed_to)}</div>` : ''}
+                ${txn.po_number ? `<div>PO: ${escapeHtml(txn.po_number)}</div>` : ''}
+                ${txn.invoice_number ? `<div>Invoice: ${escapeHtml(txn.invoice_number)}</div>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function renderActivityList(items, containerId) {
+    const container = $(containerId);
+    if (!items.length) {
+        container.innerHTML = '<div class="empty-state"><p>No activity yet</p></div>';
+        return;
+    }
+    container.innerHTML += items.map(renderActivityItem).join('');
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+async function performSearch() {
+    const term = $('search-input').value.trim().toLowerCase();
+    const categoryId = $('filter-category').value;
+    const manufacturerId = $('filter-manufacturer').value;
+    const yearFilter = $('filter-year').value;
+
+    let results = state.inventory;
+
+    if (term) {
+        results = results.filter(p =>
+            (p.sku && p.sku.toLowerCase().includes(term)) ||
+            (p.name && p.name.toLowerCase().includes(term)) ||
+            (p.manufacturer_code && p.manufacturer_code.toLowerCase().includes(term)) ||
+            (p.manufacturer_name && p.manufacturer_name.toLowerCase().includes(term))
+        );
+    }
+
+    if (categoryId) {
+        results = results.filter(p => p.category_id === categoryId);
+    }
+
+    if (manufacturerId) {
+        results = results.filter(p => p.manufacturer_id === manufacturerId);
+    }
+
+    if (yearFilter) {
+        const y = parseInt(yearFilter);
+        results = results.filter(p =>
+            (!p.model_year_start || p.model_year_start <= y) &&
+            (!p.model_year_end || p.model_year_end >= y)
+        );
+    }
+
+    const container = $('search-results');
+    const empty = $('search-empty');
+
+    if (!results.length) {
+        container.innerHTML = '';
+        empty.style.display = '';
+        return;
+    }
+
+    empty.style.display = 'none';
+    container.innerHTML = results.map(renderProductItem).join('');
+}
+
+// Dashboard quick search
+async function performDashboardSearch() {
+    const term = $('dashboard-search').value.trim().toLowerCase();
+    if (!term) return;
+
+    // Navigate to search screen with the term
+    $('search-input').value = term;
+    switchScreen('search');
+    performSearch();
+}
+
+// ============================================================
+// PRODUCT LOOKUP (used by scan + manual)
+// ============================================================
+async function lookupProduct(query) {
+    if (!supabase || !query) return null;
+
+    query = query.trim();
+    const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
+
+    // Try exact SKU match
+    let { data } = await supabase
+        .from(viewName)
+        .select('*')
+        .eq('sku', query)
+        .eq('is_active', true)
+        .limit(1);
+
+    if (data && data.length) return data[0];
+
+    // Try manufacturer code
+    ({ data } = await supabase
+        .from(viewName)
+        .select('*')
+        .eq('manufacturer_code', query)
+        .eq('is_active', true)
+        .limit(1));
+
+    if (data && data.length) return data[0];
+
+    // Try name search (fuzzy)
+    ({ data } = await supabase
+        .from(viewName)
+        .select('*')
+        .ilike('name', `%${query}%`)
+        .eq('is_active', true)
+        .limit(5));
+
+    if (data && data.length === 1) return data[0];
+    if (data && data.length > 1) {
+        // Show in search results
+        $('search-input').value = query;
+        switchScreen('search');
+        performSearch();
+        return null;
+    }
+
+    return null;
+}
+
+// ============================================================
+// PRODUCT DETAIL MODAL
+// ============================================================
+async function openProductDetail(sku) {
+    const product = state.inventory.find(p => p.sku === sku);
+    if (!product) return;
+
+    state.selectedProduct = product;
+
+    const isAdmin = state.userRole === 'admin';
+    const yearRange = (product.model_year_start || product.model_year_end)
+        ? `${product.model_year_start || '?'} - ${product.model_year_end || '?'}`
+        : 'N/A';
+
+    let html = `
+        <div class="detail-card" style="border:none;padding:0;">
+            <div class="detail-header">
+                <div>
+                    <div class="detail-sku">${escapeHtml(product.sku)}</div>
+                    <div class="detail-name">${escapeHtml(product.name)}</div>
+                    <div class="detail-manufacturer">${escapeHtml(product.manufacturer_name || 'Unknown manufacturer')}</div>
+                </div>
+                <div class="product-qty">
+                    <div class="qty-num ${qtyClass(product.qty, product.reorder_level)}">${product.qty}</div>
+                    <div class="qty-label">in stock</div>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <div class="detail-field">
+                    <label>Category</label>
+                    <div class="field-value">${product.category_icon || ''} ${escapeHtml(product.category_name || 'N/A')}</div>
+                </div>
+                <div class="detail-field">
+                    <label>Location</label>
+                    <div class="field-value">${escapeHtml(product.location || 'N/A')}</div>
+                </div>
+                <div class="detail-field">
+                    <label>Selling Price</label>
+                    <div class="field-value">${formatCurrency(product.selling_price)}</div>
+                </div>
+                ${isAdmin ? `
+                <div class="detail-field admin-only">
+                    <label>Buying Price</label>
+                    <div class="field-value">${formatCurrency(product.cost)}</div>
+                </div>` : `
+                <div class="detail-field">
+                    <label>Reorder Level</label>
+                    <div class="field-value">${product.reorder_level || 'N/A'}</div>
+                </div>`}
+                <div class="detail-field">
+                    <label>Model Years</label>
+                    <div class="field-value"><span class="year-range">${yearRange}</span></div>
+                </div>
+                <div class="detail-field">
+                    <label>Mfr Code</label>
+                    <div class="field-value">${escapeHtml(product.manufacturer_code || 'N/A')}</div>
+                </div>
+            </div>
+
+            ${product.description ? `<p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">${escapeHtml(product.description)}</p>` : ''}
+
+            ${product.is_discontinued ? '<p style="color:var(--danger);font-size:13px;font-weight:600;">⚠ This product is discontinued</p>' : ''}
+    `;
+
+    // Image
+    if (product.image_url) {
+        html += `<div style="margin:12px 0;"><img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name)}" style="width:100%;border-radius:var(--radius-sm);max-height:200px;object-fit:contain;background:var(--bg-input);" loading="lazy"></div>`;
+    }
+
+    // Actions
+    html += `<div class="detail-actions">`;
+    html += `<button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>`;
+    html += `<button class="btn btn-primary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>`;
+    if (isAdmin) {
+        html += `<button class="btn btn-secondary btn-sm" onclick="showAdjustModal('${escapeHtml(product.sku)}')">Adjust</button>`;
+    }
+    html += `</div>`;
+
+    // Product images gallery
+    html += `<div id="modal-images"></div>`;
+
+    html += `</div>`;
+
+    $('modal-content').innerHTML = html;
+    $('product-modal').classList.add('active');
+
+    // Load product images
+    loadProductImages(product.sku);
+}
+
+async function loadProductImages(sku) {
+    if (!supabase) return;
+    const { data } = await supabase
+        .from('product_images')
+        .select('*')
+        .eq('sku', sku)
+        .order('is_primary', { ascending: false });
+
+    if (data && data.length) {
+        const container = $('modal-images');
+        let html = '<div style="margin-top:16px;"><label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Images</label><div class="image-gallery">';
+        data.forEach(img => {
+            html += `<div class="img-thumb"><img src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.image_title || '')}" loading="lazy"></div>`;
+        });
+        html += '</div></div>';
+        container.innerHTML = html;
+    }
+}
+
+function closeModal(id) {
+    $(id).classList.remove('active');
+}
+
+// ============================================================
+// CROSS-COMPATIBILITY
+// ============================================================
+async function showCompatibility(sku) {
+    closeModal('product-modal');
+
+    if (!supabase) return;
+    showLoading();
+
+    const { data, error } = await supabase
+        .from('cross_compatibility_matrix')
+        .select('*')
+        .or(`primary_sku.eq.${sku},compatible_sku.eq.${sku}`);
+
+    hideLoading();
+
+    if (error || !data || !data.length) {
+        $('compat-content').innerHTML = '<div class="empty-state"><p>No cross-compatibility data found for this product.</p></div>';
+        $('compat-modal').classList.add('active');
+        return;
+    }
+
+    let html = '<div class="compat-list">';
+    data.forEach(item => {
+        const otherSku = item.primary_sku === sku ? item.compatible_sku : item.primary_sku;
+        const levelClass = item.compatibility_level === 'FULL' ? 'compat-full'
+            : item.compatibility_level === 'PARTIAL' ? 'compat-partial' : 'compat-mod';
+
+        html += `
+            <div class="compat-item">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <strong style="color:var(--accent);">${escapeHtml(otherSku)}</strong>
+                    <span class="compat-level ${levelClass}">${item.compatibility_level}</span>
+                </div>
+                <div style="font-size:13px;margin-top:8px;color:var(--text-secondary);">
+                    ${item.car_brand_from ? `${escapeHtml(item.car_brand_from)} ${escapeHtml(item.model_from || '')}` : ''}
+                    ${item.car_brand_to ? ` → ${escapeHtml(item.car_brand_to)} ${escapeHtml(item.model_to || '')}` : ''}
+                    ${item.year_from ? `<br>Years: ${item.year_from} - ${item.year_to || '?'}` : ''}
+                </div>
+                ${item.compatibility_note ? `<div style="font-size:12px;margin-top:4px;color:var(--text-muted);">${escapeHtml(item.compatibility_note)}</div>` : ''}
+                ${item.verified_by_user ? `<div style="font-size:11px;margin-top:4px;color:var(--text-muted);">Verified by ${escapeHtml(item.verified_by_user)}</div>` : ''}
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    $('compat-content').innerHTML = html;
+    $('compat-modal').classList.add('active');
+}
+
+// ============================================================
+// RECEIVE STOCK
+// ============================================================
+function goReceive(sku) {
+    closeModal('product-modal');
+    $('receive-search').value = sku;
+    switchScreen('receive');
+    lookupForReceive(sku);
+}
+
+async function lookupForReceive(query) {
+    if (!query) return;
+
+    showLoading();
+    const product = await lookupProduct(query);
+    hideLoading();
+
+    if (!product) {
+        showToast('Product not found', 'error');
+        $('receive-product-info').style.display = 'none';
+        $('receive-empty').style.display = '';
+        return;
+    }
+
+    state.selectedProduct = product;
+    $('receive-sku').textContent = product.sku;
+    $('receive-name').textContent = product.name;
+    $('receive-manufacturer').textContent = product.manufacturer_name || 'Unknown manufacturer';
+    $('receive-current-qty').textContent = product.qty;
+    $('receive-qty').value = '';
+    $('receive-notes').value = '';
+    $('receive-manufacturer-select').value = '';
+    $('receive-product-info').style.display = '';
+    $('receive-empty').style.display = 'none';
+}
+
+async function handleReceive(e) {
+    e.preventDefault();
+    if (!supabase || !state.selectedProduct) return;
+
+    const product = state.selectedProduct;
+    const receivedQty = parseInt($('receive-qty').value);
+    const newManufacturerId = $('receive-manufacturer-select').value;
+    const notes = $('receive-notes').value.trim();
+
+    if (!receivedQty || receivedQty < 1) {
+        showToast('Enter a valid quantity', 'error');
+        return;
+    }
+
+    const btn = $('receive-confirm-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    const qtyBefore = product.qty;
+    const qtyAfter = qtyBefore + receivedQty;
+
+    try {
+        // Update inventory qty
+        const updateData = { qty: qtyAfter };
+        if (newManufacturerId) {
+            updateData.manufacturer_id = newManufacturerId;
+        }
+
+        const { error: updateErr } = await supabase
+            .from('inventory')
+            .update(updateData)
+            .eq('sku', product.sku);
+
+        if (updateErr) throw updateErr;
+
+        // Determine manufacturer change info
+        let mfrChangedFrom = null;
+        let mfrChangedTo = null;
+        if (newManufacturerId && newManufacturerId !== product.manufacturer_id) {
+            mfrChangedFrom = product.manufacturer_name || product.manufacturer_id;
+            const newMfr = state.manufacturers.find(m => m.id === newManufacturerId);
+            mfrChangedTo = newMfr ? newMfr.name : newManufacturerId;
+        }
+
+        // Log transaction
+        const { error: txnErr } = await supabase
+            .from('transactions')
+            .insert({
+                type: 'received',
+                sku: product.sku,
+                quantity_change: receivedQty,
+                qty_before: qtyBefore,
+                qty_after: qtyAfter,
+                user_email: state.user.email,
+                user_action: 'receive_stock',
+                notes: notes || null,
+                manufacturer_changed_from: mfrChangedFrom,
+                manufacturer_changed_to: mfrChangedTo,
+            });
+
+        if (txnErr) throw txnErr;
+
+        // Update local cache
+        const idx = state.inventory.findIndex(p => p.sku === product.sku);
+        if (idx >= 0) {
+            state.inventory[idx].qty = qtyAfter;
+            if (newManufacturerId) {
+                state.inventory[idx].manufacturer_id = newManufacturerId;
+            }
+        }
+
+        showToast(`Received ${receivedQty} × ${product.sku}. Stock: ${qtyAfter}`, 'success');
+
+        // Update UI
+        $('receive-current-qty').textContent = qtyAfter;
+        state.selectedProduct.qty = qtyAfter;
+        $('receive-qty').value = '';
+        $('receive-notes').value = '';
+
+        // Refresh dashboard stats
+        loadDashboardStats();
+        loadRecentActivity();
+
+    } catch (err) {
+        console.error('Receive error:', err);
+        showToast('Failed to receive stock. Try again.', 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Confirm Receive';
+}
+
+// ============================================================
+// ADMIN: ADJUST INVENTORY
+// ============================================================
+function showAdjustModal(sku) {
+    closeModal('product-modal');
+    const product = state.inventory.find(p => p.sku === sku);
+    if (!product) return;
+
+    state.selectedProduct = product;
+    $('adjust-current-qty').textContent = product.qty;
+    $('adjust-new-qty').value = product.qty;
+    $('adjust-reason').value = '';
+    $('adjust-notes').value = '';
+    $('adjust-modal').classList.add('active');
+}
+
+async function handleAdjust(e) {
+    e.preventDefault();
+    if (!supabase || !state.selectedProduct || state.userRole !== 'admin') return;
+
+    const product = state.selectedProduct;
+    const newQty = parseInt($('adjust-new-qty').value);
+    const reason = $('adjust-reason').value;
+    const notes = $('adjust-notes').value.trim();
+
+    if (isNaN(newQty) || newQty < 0) {
+        showToast('Enter a valid quantity', 'error');
+        return;
+    }
+
+    if (!reason) {
+        showToast('Please select a reason', 'error');
+        return;
+    }
+
+    showLoading();
+
+    try {
+        const qtyBefore = product.qty;
+        const quantityChange = newQty - qtyBefore;
+
+        const { error: updateErr } = await supabase
+            .from('inventory')
+            .update({ qty: newQty })
+            .eq('sku', product.sku);
+
+        if (updateErr) throw updateErr;
+
+        const { error: txnErr } = await supabase
+            .from('transactions')
+            .insert({
+                type: 'adjusted',
+                sku: product.sku,
+                quantity_change: quantityChange,
+                qty_before: qtyBefore,
+                qty_after: newQty,
+                user_email: state.user.email,
+                user_action: 'manual_adjust',
+                reason: reason,
+                notes: notes || null,
+            });
+
+        if (txnErr) throw txnErr;
+
+        // Update cache
+        const idx = state.inventory.findIndex(p => p.sku === product.sku);
+        if (idx >= 0) state.inventory[idx].qty = newQty;
+
+        showToast(`Adjusted ${product.sku}: ${qtyBefore} → ${newQty}`, 'success');
+        closeModal('adjust-modal');
+        loadDashboardStats();
+        loadRecentActivity();
+
+    } catch (err) {
+        console.error('Adjust error:', err);
+        showToast('Failed to adjust inventory', 'error');
+    }
+
+    hideLoading();
+}
+
+// ============================================================
+// BARCODE SCANNER
+// ============================================================
+async function startScanner() {
+    if (state.scannerActive) return;
+
+    const statusEl = $('scanner-status');
+    statusEl.textContent = 'Initializing camera...';
+
+    try {
+        // Check if ZXing is available
+        if (typeof ZXing === 'undefined') {
+            statusEl.textContent = 'Scanner library not loaded';
+            return;
+        }
+
+        state.codeReader = new ZXing.BrowserMultiFormatReader();
+        const videoEl = $('scanner-video');
+
+        const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+        // Prefer back camera
+        let deviceId = undefined;
+        const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
+        if (backCam) deviceId = backCam.deviceId;
+        else if (devices.length) deviceId = devices[0].deviceId;
+
+        if (!deviceId && devices.length === 0) {
+            statusEl.textContent = 'No camera found. Use manual input.';
+            return;
+        }
+
+        state.codeReader.decodeFromVideoDevice(deviceId, videoEl, async (result, err) => {
+            if (result) {
+                const code = result.getText();
+                statusEl.textContent = `Found: ${code}`;
+
+                // Lookup the product
+                showLoading();
+                const product = await lookupProduct(code);
+                hideLoading();
+
+                if (product) {
+                    showScannedProduct(product);
+                } else {
+                    showToast(`No product found for: ${code}`, 'error');
+                    $('manual-sku-input').value = code;
+                }
+            }
+        });
+
+        state.scannerActive = true;
+        statusEl.textContent = 'Scanning... Point at barcode';
+
+    } catch (err) {
+        console.error('Scanner error:', err);
+        statusEl.textContent = 'Camera access denied. Use manual input.';
+    }
+}
+
+function stopScanner() {
+    if (state.codeReader) {
+        state.codeReader.reset();
+        state.scannerActive = false;
+    }
+}
+
+function showScannedProduct(product) {
+    state.selectedProduct = product;
+    $('scan-empty').style.display = 'none';
+    $('scan-result').style.display = '';
+
+    const isAdmin = state.userRole === 'admin';
+    const yearRange = (product.model_year_start || product.model_year_end)
+        ? `${product.model_year_start || '?'} - ${product.model_year_end || '?'}`
+        : 'N/A';
+
+    $('scan-detail-card').innerHTML = `
+        <div class="detail-header">
+            <div>
+                <div class="detail-sku">${escapeHtml(product.sku)}</div>
+                <div class="detail-name">${escapeHtml(product.name)}</div>
+                <div class="detail-manufacturer">${escapeHtml(product.manufacturer_name || 'Unknown')}</div>
+            </div>
+            <div class="product-qty">
+                <div class="qty-num ${qtyClass(product.qty, product.reorder_level)}">${product.qty}</div>
+                <div class="qty-label">in stock</div>
+            </div>
+        </div>
+        <div class="detail-grid">
+            <div class="detail-field">
+                <label>Category</label>
+                <div class="field-value">${product.category_icon || ''} ${escapeHtml(product.category_name || 'N/A')}</div>
+            </div>
+            <div class="detail-field">
+                <label>Location</label>
+                <div class="field-value">${escapeHtml(product.location || 'N/A')}</div>
+            </div>
+            <div class="detail-field">
+                <label>Selling Price</label>
+                <div class="field-value">${formatCurrency(product.selling_price)}</div>
+            </div>
+            ${isAdmin ? `<div class="detail-field"><label>Buying Price</label><div class="field-value">${formatCurrency(product.cost)}</div></div>` : ''}
+            <div class="detail-field">
+                <label>Model Years</label>
+                <div class="field-value"><span class="year-range">${yearRange}</span></div>
+            </div>
+            <div class="detail-field">
+                <label>Mfr Code</label>
+                <div class="field-value">${escapeHtml(product.manufacturer_code || 'N/A')}</div>
+            </div>
+        </div>
+        ${product.image_url ? `<div style="margin:12px 0;"><img src="${escapeHtml(product.image_url)}" style="width:100%;border-radius:var(--radius-sm);max-height:160px;object-fit:contain;background:var(--bg-input);" loading="lazy"></div>` : ''}
+        <div class="detail-actions">
+            <button class="btn btn-primary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>
+            <button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>
+            <button class="btn btn-secondary btn-sm" onclick="openProductDetail('${escapeHtml(product.sku)}')">Details</button>
+        </div>
+    `;
+}
+
+// ============================================================
+// REALTIME SUBSCRIPTIONS
+// ============================================================
+function setupRealtime() {
+    if (!supabase) return;
+
+    // Inventory changes
+    supabase
+        .channel('inventory-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
+            handleInventoryChange(payload);
+        })
+        .subscribe();
+
+    // Transaction changes (for activity feed)
+    supabase
+        .channel('transaction-changes')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, (payload) => {
+            handleNewTransaction(payload.new);
+        })
+        .subscribe();
+}
+
+function handleInventoryChange(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload;
+
+    if (eventType === 'UPDATE' && newRow) {
+        const idx = state.inventory.findIndex(p => p.id === newRow.id);
+        if (idx >= 0) {
+            // Preserve joined fields (from view) and update raw fields
+            Object.assign(state.inventory[idx], newRow);
+        }
+        // Refresh stats
+        loadDashboardStats();
+
+        // If currently viewing this product, update the display
+        if (state.selectedProduct && state.selectedProduct.id === newRow.id) {
+            state.selectedProduct.qty = newRow.qty;
+        }
+    } else if (eventType === 'INSERT' && newRow) {
+        // Reload inventory to get view data
+        loadInventory();
+        loadDashboardStats();
+    }
+}
+
+function handleNewTransaction(txn) {
+    // Prepend to dashboard activity
+    const container = $('dashboard-activity');
+    const html = renderActivityItem(txn);
+    container.insertAdjacentHTML('afterbegin', html);
+
+    // Remove excess items (keep 20)
+    while (container.children.length > 20) {
+        container.removeChild(container.lastChild);
+    }
+
+    // Also prepend to activity screen if active
+    if (state.currentScreen === 'activity') {
+        const actContainer = $('activity-list');
+        actContainer.insertAdjacentHTML('afterbegin', html);
+    }
+
+    // Show toast if from another user
+    if (txn.user_email !== state.user?.email) {
+        showToast(`${txn.user_email} ${txn.type} ${txn.sku} (${txn.quantity_change > 0 ? '+' : ''}${txn.quantity_change})`, 'info');
+    }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Init Supabase
+    const configured = initSupabase();
+    if (configured) {
+        checkSession();
+    }
+
+    populateYearFilter();
+
+    // Auth
+    $('login-form').addEventListener('submit', handleLogin);
+    $('logout-btn').addEventListener('click', handleLogout);
+
+    // Navigation
+    $$('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchScreen(btn.dataset.screen));
+    });
+
+    // Dashboard search
+    $('dashboard-search').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') performDashboardSearch();
+    });
+
+    // View all activity link
+    $('view-all-activity').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchScreen('activity');
+    });
+
+    // Search
+    const debouncedSearch = debounce(performSearch, 300);
+    $('search-input').addEventListener('input', debouncedSearch);
+    $('filter-category').addEventListener('change', performSearch);
+    $('filter-manufacturer').addEventListener('change', performSearch);
+    $('filter-year').addEventListener('change', performSearch);
+
+    // Scan - manual lookup
+    $('manual-lookup-btn').addEventListener('click', async () => {
+        const query = $('manual-sku-input').value.trim();
+        if (!query) return;
+        showLoading();
+        const product = await lookupProduct(query);
+        hideLoading();
+        if (product) {
+            showScannedProduct(product);
+        } else {
+            showToast('Product not found', 'error');
+        }
+    });
+
+    $('manual-sku-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') $('manual-lookup-btn').click();
+    });
+
+    // Receive
+    $('receive-lookup-btn').addEventListener('click', () => {
+        lookupForReceive($('receive-search').value.trim());
+    });
+    $('receive-search').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') $('receive-lookup-btn').click();
+    });
+    $('receive-form').addEventListener('submit', handleReceive);
+
+    // Activity filters
+    $('activity-filter-type').addEventListener('change', () => loadActivity(true));
+    $('activity-filter-date').addEventListener('change', () => loadActivity(true));
+    $('activity-load-more').addEventListener('click', () => {
+        state.activityPage++;
+        loadActivity(false);
+    });
+
+    // Adjust form
+    $('adjust-form').addEventListener('submit', handleAdjust);
+
+    // Modal close on backdrop click
+    ['product-modal', 'compat-modal', 'adjust-modal'].forEach(id => {
+        $(id).addEventListener('click', (e) => {
+            if (e.target === $(id)) closeModal(id);
+        });
+    });
+
+    // Initial search render (show all products)
+    if (state.inventory.length) {
+        performSearch();
+    }
+});
+</script>
+</body>
+</html>
