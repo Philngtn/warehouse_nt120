@@ -801,6 +801,18 @@
             <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
             <button type="submit" class="btn btn-primary btn-block" id="login-btn">Sign In</button>
             <div id="login-error" style="color:var(--danger);font-size:13px;text-align:center;display:none;"></div>
+            <div style="text-align:center;">
+                <button type="button" id="show-forgot-btn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;">Forgot password?</button>
+            </div>
+        </form>
+        <form class="auth-form" id="forgot-form" style="display:none;">
+            <div style="color:var(--text-secondary);font-size:13px;text-align:center;">Enter your email and we'll send a reset link.</div>
+            <input type="email" id="forgot-email" placeholder="Email" required autocomplete="email">
+            <button type="submit" class="btn btn-primary btn-block" id="forgot-btn">Send Reset Link</button>
+            <div id="forgot-msg" style="font-size:13px;text-align:center;display:none;"></div>
+            <div style="text-align:center;">
+                <button type="button" id="back-to-login-btn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;">Back to Sign In</button>
+            </div>
         </form>
     </div>
 
@@ -1194,6 +1206,40 @@ async function handleLogin(e) {
     state.user = data.user;
     state.userRole = data.user.user_metadata?.role || 'staff';
     enterApp();
+}
+
+async function handleForgotPassword(e) {
+    e.preventDefault();
+    const email = $('forgot-email').value.trim();
+    const msgEl = $('forgot-msg');
+    const btn = $('forgot-btn');
+
+    if (!supabase) {
+        msgEl.textContent = 'App not configured. Contact admin.';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    msgEl.style.display = 'none';
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+
+    if (error) {
+        msgEl.textContent = 'Failed to send reset email. Try again.';
+        msgEl.style.color = 'var(--danger)';
+    } else {
+        msgEl.textContent = 'Reset link sent! Check your email.';
+        msgEl.style.color = 'var(--success)';
+    }
+    msgEl.style.display = 'block';
 }
 
 async function handleLogout() {
@@ -2212,6 +2258,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auth
     $('login-form').addEventListener('submit', handleLogin);
+    $('forgot-form').addEventListener('submit', handleForgotPassword);
+    $('show-forgot-btn').addEventListener('click', () => {
+        $('login-form').style.display = 'none';
+        $('forgot-form').style.display = '';
+        $('forgot-email').value = $('login-email').value;
+        $('forgot-msg').style.display = 'none';
+    });
+    $('back-to-login-btn').addEventListener('click', () => {
+        $('forgot-form').style.display = 'none';
+        $('login-form').style.display = '';
+    });
     $('logout-btn').addEventListener('click', handleLogout);
 
     // Navigation
