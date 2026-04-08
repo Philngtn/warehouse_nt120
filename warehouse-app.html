@@ -2394,14 +2394,12 @@ async function importFromExcel() {
         // Change button to "Upload Completed" — clicking closes the modal
         btn.disabled = false;
         btn.innerHTML = '✅ Upload Completed';
-        btn.onclick = () => { closeAllModals(); btn.onclick = null; };
-        return;
+        btn.onclick = () => { closeAllModals(); btn.innerHTML = '⬆️ Upload to Database'; btn.onclick = null; };
     } catch (err) {
         console.error('Import error:', err);
         msgEl.textContent = `✗ Import failed: ${err.message}`;
         msgEl.style.color = 'var(--danger)';
         msgEl.style.display = 'block';
-    } finally {
         btn.disabled = false;
         btn.innerHTML = '⬆️ Upload to Database';
     }
