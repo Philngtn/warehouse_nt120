@@ -2694,7 +2694,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Excel import
-    $('import-btn').addEventListener('click', importFromExcel);
+    $('import-btn').onclick = importFromExcel;
 
     // Navigation
     $$('.nav-btn').forEach(btn => {
