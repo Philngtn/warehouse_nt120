@@ -1,7 +1,7 @@
 {
   "outputDirectory": ".",
-  "cleanUrls": true,
   "rewrites": [
+    { "source": "/", "destination": "/warehouse-app.html" },
     { "source": "/(.*)", "destination": "/warehouse-app.html" }
   ]
 }
