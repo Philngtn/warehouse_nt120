@@ -2245,6 +2245,16 @@ async function importFromExcel() {
         const mfgMap = new Map(manufacturers?.map(m => [m.name?.toLowerCase(), m.id]) || []);
         const catMap = new Map(categories?.map(c => [c.name?.toLowerCase(), c.id]) || []);
 
+        // Deactivate all current inventory — Excel file is the new source of truth
+        // (soft delete: is_active = false, consistent with app policy of never hard-deleting)
+        btn.innerHTML = '<span class="spinner"></span> Clearing old data...';
+        const { error: clearErr } = await db
+            .from('inventory')
+            .update({ is_active: false })
+            .neq('id', '00000000-0000-0000-0000-000000000000'); // match all rows
+        if (clearErr) throw new Error(`Failed to clear inventory: ${clearErr.message}`);
+
+        btn.innerHTML = '<span class="spinner"></span> Uploading...';
         const errors = [];
         let imported = 0, updated = 0;
 
@@ -2315,7 +2325,8 @@ async function importFromExcel() {
                     model_year_start: row['Model Year Start'] ? parseInt(row['Model Year Start']) : null,
                     model_year_end: row['Model Year End'] ? parseInt(row['Model Year End']) : null,
                     description: String(row['Description'] || '').trim() || null,
-                    is_discontinued: String(row['Discontinued'] || '').toUpperCase() === 'TRUE'
+                    is_discontinued: String(row['Discontinued'] || '').toUpperCase() === 'TRUE',
+                    is_active: true
                 };
 
                 // Check if product exists
