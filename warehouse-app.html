@@ -2764,15 +2764,23 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     if (!statusEl) statusEl = $('scanner-status');
     if (!videoEl) videoEl = $('scanner-video');
 
-    // TRY_HARDER = hint key 1 in ZXing enum — scan all formats but work harder per frame
+    // TRY_HARDER hint (key=1) — ZXing works harder per frame
     const hints = new Map([[1, true]]);
     state.codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
+    // Use explicit constraints for best quality:
+    // - Mobile: facingMode environment (back camera) + 1080p
+    // - Desktop: specific deviceId + 1080p
+    const constraints = {
+        video: hasBackCam
+            ? { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+            : { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    };
+
     let scanCooldown = false;
-    // Expose cooldown release so clearScanResult() can resume scanning
     state._scanCooldownRelease = () => { scanCooldown = false; };
 
-    state.codeReader.decodeFromVideoDevice(deviceId, videoEl, async (result, err) => {
+    state.codeReader.decodeFromConstraints(constraints, videoEl, async (result, err) => {
         if (!result || scanCooldown) return;
         scanCooldown = true;
 
@@ -2783,7 +2791,6 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
         hideLoading();
         if (product) {
             showScannedProduct(product);
-            // Cooldown released when user taps X
         } else {
             showToast(`No product found for: "${code}"`, 'error', 'scan-not-found');
             $('manual-sku-input').value = code;
