@@ -938,6 +938,9 @@
                     <div class="scanner-crosshair"></div>
                 </div>
                 <div class="scanner-status" id="scanner-status">Initializing camera...</div>
+                <button id="scanner-retry-btn" onclick="retryScanner()" style="display:none;position:absolute;bottom:44px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;align-items:center;gap:6px;">
+                    ↺ Retry
+                </button>
             </div>
 
             <!-- Camera selector (shown when multiple cameras available) -->
@@ -2668,6 +2671,22 @@ async function startScanner() {
             return;
         }
 
+        // Must be a secure context (HTTPS or localhost)
+        if (!window.isSecureContext) {
+            statusEl.innerHTML = 'Camera requires HTTPS. Open via Vercel, not file://';
+            return;
+        }
+
+        // Pre-check camera permission
+        if (navigator.permissions) {
+            const perm = await navigator.permissions.query({ name: 'camera' });
+            if (perm.state === 'denied') {
+                statusEl.innerHTML = 'Camera blocked. Click the 🔒 icon in the address bar to allow camera, then retry.';
+                $('scanner-retry-btn').style.display = 'inline-flex';
+                return;
+            }
+        }
+
         state.codeReader = new ZXing.BrowserMultiFormatReader();
         const videoEl = $('scanner-video');
 
@@ -2700,7 +2719,15 @@ async function startScanner() {
 
     } catch (err) {
         console.error('Scanner error:', err);
-        $('scanner-status').textContent = 'Camera access denied. Use manual input.';
+        const msg = err.name === 'NotAllowedError'
+            ? 'Camera blocked — click the 🔒 icon in the address bar to allow, then retry.'
+            : err.name === 'NotFoundError'
+            ? 'No camera found. Use manual input.'
+            : err.name === 'NotReadableError'
+            ? 'Camera is in use by another app. Close it and retry.'
+            : `Camera error: ${err.message}`;
+        $('scanner-status').textContent = msg;
+        $('scanner-retry-btn').style.display = 'inline-flex';
     }
 }
 
@@ -2746,6 +2773,14 @@ function stopScanner() {
         state.scannerActive = false;
     }
     $('camera-select-row').classList.remove('visible');
+}
+
+function retryScanner() {
+    $('scanner-retry-btn').style.display = 'none';
+    $('scanner-status').textContent = 'Initializing camera...';
+    state.scannerActive = false;
+    if (state.codeReader) { state.codeReader.reset(); state.codeReader = null; }
+    startScanner();
 }
 
 function showScannedProduct(product) {
