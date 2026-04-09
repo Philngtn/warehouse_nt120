@@ -24,9 +24,28 @@ function populateYearFilter() {
 function renderProductItem(product) {
     const qtyClz = qtyClass(product.qty, product.reorder_level);
     const catIcon = product.category_icon || '📦';
-    const imgHtml = product.image_url
-        ? `<img src="${escapeHtml(product.image_url)}" alt="" loading="lazy">`
-        : catIcon;
+
+    const localImgs = (state.localImages && state.localImages[product.sku]) || [];
+    let imgHtml;
+    if (localImgs.length > 1) {
+        const slides = localImgs.map((f, i) =>
+            `<img src="part_images/${escapeHtml(product.sku)}/${escapeHtml(f)}" alt="" loading="lazy">`
+        ).join('');
+        const dots = localImgs.map((_, i) =>
+            `<span class="carousel-dot${i === 0 ? ' active' : ''}"></span>`
+        ).join('');
+        imgHtml = `<div class="img-carousel" data-idx="0">
+            <div class="img-carousel-inner">${slides}</div>
+            <div class="carousel-dots">${dots}</div>
+        </div>`;
+    } else if (localImgs.length === 1) {
+        imgHtml = `<img src="part_images/${escapeHtml(product.sku)}/${escapeHtml(localImgs[0])}" alt="" loading="lazy">`;
+    } else if (product.image_url) {
+        imgHtml = `<img src="${escapeHtml(product.image_url)}" alt="" loading="lazy">`;
+    } else {
+        imgHtml = catIcon;
+    }
+
     const canAddToCart = product.selling_price != null && product.qty > 0;
     const cartBtn = canAddToCart
         ? `<button class="btn btn-primary btn-sm"
@@ -97,6 +116,35 @@ function renderActivityList(items, containerId) {
         return;
     }
     container.innerHTML += items.map(renderActivityItem).join('');
+}
+
+// ============================================================
+// CAROUSEL INIT (call after inserting carousel HTML into DOM)
+// ============================================================
+function initCarousels(container) {
+    container.querySelectorAll('.img-carousel').forEach(el => {
+        const inner = el.querySelector('.img-carousel-inner');
+        const dots = el.querySelectorAll('.carousel-dot');
+        let startX = 0;
+
+        el.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX;
+            e.stopPropagation();
+        }, { passive: true });
+
+        el.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) < 20) return;
+            const imgs = inner.querySelectorAll('img');
+            let idx = parseInt(el.dataset.idx) || 0;
+            if (dx < 0 && idx < imgs.length - 1) idx++;
+            else if (dx > 0 && idx > 0) idx--;
+            el.dataset.idx = idx;
+            inner.style.transform = `translateX(-${idx * 100}%)`;
+            dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+            e.stopPropagation();
+        }, { passive: true });
+    });
 }
 
 // ============================================================

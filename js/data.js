@@ -1,12 +1,19 @@
 // ============================================================
 // DATA LOADING
 // ============================================================
+async function loadImageManifest() {
+    try {
+        const res = await fetch('part_images/manifest.json');
+        if (res.ok) state.localImages = await res.json();
+    } catch (_) {}
+}
+
 async function loadInitialData() {
     if (!db) return;
     showLoading();
     try {
         // Inventory must load first so loadDashboardStats can derive counts from cache
-        await Promise.all([loadCategories(), loadManufacturers(), loadInventory()]);
+        await Promise.all([loadCategories(), loadManufacturers(), loadInventory(), loadImageManifest()]);
         await Promise.all([loadDashboardStats(), loadRecentActivity()]);
     } catch (err) {
         console.error('Error loading data:', err);

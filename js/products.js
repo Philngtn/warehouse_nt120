@@ -76,22 +76,29 @@ async function openProductDetail(sku) {
 }
 
 async function loadProductImages(sku) {
-    if (!db) return;
-    const { data } = await db
-        .from('product_images')
-        .select('*')
-        .eq('sku', sku)
-        .order('is_primary', { ascending: false });
+    const localFiles = (state.localImages && state.localImages[sku]) || [];
+    const localImgs = localFiles.map(f => ({ image_url: `part_images/${sku}/${f}`, image_title: f }));
 
-    if (data && data.length) {
-        const container = $('modal-images');
-        let html = '<div style="margin-top:16px;"><label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Images</label><div class="image-gallery">';
-        data.forEach(img => {
-            html += `<div class="img-thumb"><img src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.image_title || '')}" loading="lazy"></div>`;
-        });
-        html += '</div></div>';
-        container.innerHTML = html;
+    let dbImgs = [];
+    if (db) {
+        const { data } = await db
+            .from('product_images')
+            .select('*')
+            .eq('sku', sku)
+            .order('is_primary', { ascending: false });
+        dbImgs = data || [];
     }
+
+    const allImgs = [...localImgs, ...dbImgs];
+    if (!allImgs.length) return;
+
+    const container = $('modal-images');
+    let html = '<div style="margin-top:16px;"><label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Images</label><div class="image-gallery">';
+    allImgs.forEach(img => {
+        html += `<div class="img-thumb"><img src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.image_title || '')}" loading="lazy"></div>`;
+    });
+    html += '</div></div>';
+    container.innerHTML = html;
 }
 
 function closeModal(id) {
