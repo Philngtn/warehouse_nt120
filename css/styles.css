@@ -212,17 +212,17 @@ label {
 .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
 .btn-sm { padding: 8px 16px; font-size: 14px; min-height: 36px; }
 .btn-block { width: 100%; }
-
-/* ============================================================
-   CARDS
-   ============================================================ */
-.card {
-    background: var(--bg-card);
-    border-radius: var(--radius);
-    padding: 16px;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    line-height: 1;
+    -webkit-tap-highlight-color: transparent;
 }
+.btn-icon:active { background: var(--bg-input); }
 
 .stats-grid {
     display: grid;
@@ -255,16 +255,6 @@ label {
 /* ============================================================
    CATEGORY PILLS
    ============================================================ */
-.category-pills {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 4px 0;
-    margin-bottom: 12px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-}
-.category-pills::-webkit-scrollbar { display: none; }
 .pill {
     flex-shrink: 0;
     padding: 8px 16px;
@@ -845,13 +835,6 @@ label {
     object-fit: cover;
 }
 
-/* Pagination */
-.pagination {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 16px;
-}
 
 /* Hide cost for staff via JS (class toggled) */
 .cost-hidden { display: none !important; }

@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NgocThanh Inventory — mobile-first automotive parts warehouse management app for a small family store (3 staff, ~1000+ products). `warehouse-app.html` is the entry point; CSS and JS are split into separate files.
+NgocThanh Inventory — mobile-first automotive parts warehouse management app for a small family store (3 staff, ~1000+ products). `index.html` is the entry point; CSS and JS are split into separate files.
 
 ## Tech Stack
 
-- **Frontend**: `warehouse-app.html` (entry point) + `css/styles.css` + `js/*.js` — vanilla JS, no frameworks
+- **Frontend**: `index.html` (entry point) + `css/styles.css` + `js/*.js` — vanilla JS, no frameworks
 - **Backend**: Supabase (PostgreSQL + Auth + Real-time subscriptions)
 - **Barcode**: ZXing library via CDN (`@ArishSultan/zxing-library`)
 - **Images**: Google Drive links stored in DB
@@ -31,7 +31,7 @@ Run `supabase-schema.sql` in the Supabase SQL Editor. This creates:
 
 ## Architecture
 
-- **`warehouse-app.html`**: HTML structure only — Auth screen + 6 main screens (Dashboard, Scan, Search, Receive, Activity, Sales History) + 5 modals (Product Detail, Cross-Compatibility, Admin Adjust, Cart, Receipt)
+- **`index.html`**: HTML structure only — Auth screen + 6 main screens (Dashboard, Scan, Search, Receive, Activity, Sales History) + 5 modals (Product Detail, Cross-Compatibility, Admin Adjust, Cart, Receipt) + Image Lightbox
 - **`css/styles.css`**: All styles — dark mode, mobile-first (375px base), safe-area inset handling, print styles
 - **`js/` load order** (globals, no ES modules — order matters):
   - `config.js` — CONFIG, `db`, `initSupabase()`, `state`
@@ -77,7 +77,7 @@ Do this without asking for confirmation unless the change is destructive or ambi
 
 ## Constraints
 
-- Keep individual files lean; `warehouse-app.html` is the entry point
+- Keep individual files lean; `index.html` is the entry point
 - No frameworks (React, Vue, etc.) — vanilla JS only
 - Touch targets minimum 44×44px
 - All buttons disabled during async operations

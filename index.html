@@ -1,2 +1,602 @@
 <!DOCTYPE html>
-<html><head><meta http-equiv="refresh" content="0; url=/warehouse-app.html"></head></html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>NgocThanh Inventory</title>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- ZXing Barcode Scanner -->
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.18.6/umd/index.min.js"></script>
+    <!-- SheetJS for Excel import/export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="app">
+    <!-- ============================================================
+         TOAST CONTAINER
+         ============================================================ -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ============================================================
+         LOADING OVERLAY
+         ============================================================ -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- ============================================================
+         AUTH SCREEN
+         ============================================================ -->
+    <div id="auth-screen">
+        <div class="logo">NgocThanh</div>
+        <div class="subtitle">Warehouse Inventory</div>
+        <form class="auth-form" id="login-form">
+            <input type="email" id="login-email" placeholder="Email" required autocomplete="email">
+            <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+            <button type="submit" class="btn btn-primary btn-block" id="login-btn">Sign In</button>
+            <div id="login-error" style="color:var(--danger);font-size:13px;text-align:center;display:none;"></div>
+            <div style="text-align:center;">
+                <button type="button" id="show-forgot-btn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;">Forgot password?</button>
+            </div>
+        </form>
+        <form class="auth-form" id="forgot-form" style="display:none;">
+            <div style="color:var(--text-secondary);font-size:13px;text-align:center;">Enter your email and we'll send a reset link.</div>
+            <input type="email" id="forgot-email" placeholder="Email" required autocomplete="email">
+            <button type="submit" class="btn btn-primary btn-block" id="forgot-btn">Send Reset Link</button>
+            <div id="forgot-msg" style="font-size:13px;text-align:center;display:none;"></div>
+            <div style="text-align:center;">
+                <button type="button" id="back-to-login-btn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;">Back to Sign In</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ============================================================
+         MAIN APP (hidden until auth)
+         ============================================================ -->
+    <div id="main-app" style="display:none;flex-direction:column;height:100%;">
+
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <h1>NgocThanh</h1>
+            <div class="user-info">
+                <span id="user-role-badge" class="role-badge">Admin</span>
+                <button class="btn-icon" id="excel-btn" title="Import / Export Excel" style="display:none;">📊</button>
+                <button class="btn-logout" id="logout-btn" title="Sign out">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREENS -->
+        <div id="screen-dashboard" class="screen active">
+            <!-- Stats -->
+            <div class="stats-grid" id="dashboard-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total-skus">-</div>
+                    <div class="stat-label">Total SKUs</div>
+                </div>
+                <div class="stat-card warning" id="stat-low-card" onclick="showLowStockList()" style="cursor:pointer;" title="View low stock products">
+                    <div class="stat-value" id="stat-low-stock">-</div>
+                    <div class="stat-label">Low Stock</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-today-txns">-</div>
+                    <div class="stat-label">Today's Txns</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total-value">-</div>
+                    <div class="stat-label">Total Items</div>
+                </div>
+            </div>
+
+            <!-- Quick search -->
+            <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="dashboard-search" placeholder="Quick search SKU, name, or manufacturer code...">
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="section-header">
+                <h2>Recent Activity</h2>
+                <a href="#" id="view-all-activity">View All</a>
+            </div>
+            <div class="activity-list" id="dashboard-activity"></div>
+        </div>
+
+        <!-- SCAN SCREEN -->
+        <div id="screen-scan" class="screen">
+            <div class="scanner-container" id="scanner-container">
+                <video id="scanner-video" autoplay playsinline muted></video>
+                <div class="scanner-overlay">
+                    <div class="scanner-crosshair"></div>
+                </div>
+                <div class="scanner-status" id="scanner-status">Initializing camera...</div>
+                <button id="scanner-retry-btn" onclick="retryScanner()" style="display:none;position:absolute;bottom:44px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;align-items:center;gap:6px;">
+                    ↺ Retry
+                </button>
+            </div>
+
+            <!-- Camera selector (shown when multiple cameras available) -->
+            <div class="camera-select-row" id="camera-select-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:var(--text-muted)"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                <select id="camera-select" onchange="switchCamera(this.value)"></select>
+            </div>
+
+            <!-- Manual fallback -->
+            <div class="manual-input">
+                <input type="text" id="manual-sku-input" placeholder="Type SKU or manufacturer code...">
+                <button class="btn btn-primary btn-sm" id="manual-lookup-btn">Look Up</button>
+            </div>
+
+            <!-- Product detail (shown after scan) -->
+            <div id="scan-result" style="display:none;">
+                <div class="detail-card" id="scan-detail-card">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <div id="scan-empty" class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                <p>Scan a barcode or type a SKU to look up a product</p>
+            </div>
+        </div>
+
+        <!-- SEARCH SCREEN -->
+        <div id="screen-search" class="screen">
+            <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="search-input" placeholder="Search SKU, name, manufacturer code...">
+            </div>
+
+            <div class="filter-bar">
+                <select id="filter-category">
+                    <option value="">All Categories</option>
+                </select>
+                <select id="filter-manufacturer">
+                    <option value="">All Manufacturers</option>
+                </select>
+                <select id="filter-year">
+                    <option value="">All Years</option>
+                </select>
+                <button type="button" id="filter-low-stock-btn" class="filter-chip" onclick="toggleLowStockFilter()">⚠️ Low Stock</button>
+            </div>
+
+            <div id="search-results-bar" style="display:none;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px;color:var(--text-secondary);">
+                <span id="search-results-count"></span>
+                <button type="button" class="filter-chip" onclick="exportSearchResults()" style="padding:6px 12px;font-size:12px;">📥 Export</button>
+            </div>
+
+            <div class="product-list" id="search-results"></div>
+            <div id="search-empty" class="empty-state" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <p>No products found</p>
+            </div>
+        </div>
+
+        <!-- RECEIVE SCREEN -->
+        <div id="screen-receive" class="screen">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <button onclick="receiveBack()" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back
+                </button>
+                <h2>Receive Stock</h2>
+            </div>
+
+            <!-- Search for product first -->
+            <div class="manual-input">
+                <input type="text" id="receive-search" placeholder="Scan or type SKU...">
+                <button class="btn btn-primary btn-sm" id="receive-lookup-btn">Find</button>
+            </div>
+
+            <div id="receive-product-info" style="display:none;">
+                <div class="detail-card" style="margin-bottom:16px;">
+                    <div class="detail-sku" id="receive-sku"></div>
+                    <div class="detail-name" id="receive-name"></div>
+                    <div class="detail-manufacturer" id="receive-manufacturer"></div>
+
+                    <div class="receive-current" style="margin-top:12px;">
+                        <span style="color:var(--text-secondary);">Current Stock</span>
+                        <span class="current-qty" id="receive-current-qty">0</span>
+                    </div>
+                </div>
+
+                <form class="receive-form" id="receive-form">
+                    <label>Quantity Received</label>
+                    <input type="number" id="receive-qty" min="1" placeholder="Enter quantity" required>
+
+                    <label>Manufacturer (if changed)</label>
+                    <select id="receive-manufacturer-select">
+                        <option value="">No change</option>
+                    </select>
+
+                    <label>Notes (optional)</label>
+                    <textarea id="receive-notes" placeholder="Any notes about this shipment..."></textarea>
+
+                    <button type="submit" class="btn btn-primary btn-block" id="receive-confirm-btn">
+                        Confirm Receive
+                    </button>
+                </form>
+            </div>
+
+            <div id="receive-empty" class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                <p>Search for a product to receive stock</p>
+            </div>
+        </div>
+
+        <!-- ACTIVITY SCREEN -->
+        <div id="screen-activity" class="screen">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <button onclick="switchScreen('settings')" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back
+                </button>
+                <h2>Activity Log</h2>
+            </div>
+
+            <div class="filter-bar">
+                <select id="activity-filter-type">
+                    <option value="">All Types</option>
+                    <option value="received">Received</option>
+                    <option value="adjusted">Adjusted</option>
+                    <option value="sold">Sold</option>
+                    <option value="returned">Returned</option>
+                    <option value="created">Created</option>
+                    <option value="updated">Updated</option>
+                </select>
+                <input type="date" id="activity-filter-date" style="flex:1;">
+            </div>
+
+            <div class="activity-list" id="activity-list"></div>
+
+            <div class="pagination" id="activity-pagination">
+                <button class="btn btn-secondary btn-sm" id="activity-load-more" style="display:none;">Load More</button>
+            </div>
+        </div>
+
+        <!-- SALES HISTORY SCREEN -->
+        <div id="screen-sales" class="screen">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <button onclick="switchScreen('settings')" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back
+                </button>
+                <h2>Sales History</h2>
+            </div>
+
+            <div class="search-box" style="margin-bottom:8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="sales-search-input" placeholder="Search by customer name or phone...">
+            </div>
+            <input type="date" id="sales-filter-date" style="margin-bottom:12px;padding:10px 12px;font-size:14px;">
+
+            <div class="activity-list" id="sales-results"></div>
+            <div id="sales-empty" class="empty-state" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <p>No sales found</p>
+            </div>
+            <div class="pagination">
+                <button class="btn btn-secondary btn-sm" id="sales-load-more" style="display:none;">Load More</button>
+            </div>
+        </div>
+
+        <!-- SETTINGS SCREEN -->
+        <div id="screen-settings" class="screen">
+            <h2 style="margin-bottom:20px;">Settings</h2>
+
+            <!-- Account -->
+            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Account</h3></div>
+            <div class="detail-card" style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;">
+                    <div>
+                        <div id="settings-email" style="font-size:12px;color:var(--text-secondary);"></div>
+                        <span id="settings-role-badge" class="role-badge" style="margin-top:4px;display:inline-block;"></span>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" style="padding:8px 14px;font-size:13px;flex-shrink:0;" onclick="handleLogout()">Sign Out</button>
+                </div>
+            </div>
+
+            <!-- Activity -->
+            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Activity</h3></div>
+            <div class="detail-card" style="margin-bottom:16px;">
+                <div style="padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="switchScreen('activity')">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:14px;font-weight:600;">View Activity Log</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Full history of stock changes</div>
+                </div>
+                <div style="padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="switchScreen('sales')">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:14px;font-weight:600;">Sales History</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Browse past orders by customer</div>
+                </div>
+                <div style="padding:12px 0;cursor:pointer;" onclick="switchScreen('receive')">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:14px;font-weight:600;">Receive Stock</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Manually add incoming stock</div>
+                </div>
+            </div>
+
+            <!-- App Info -->
+            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">App</h3></div>
+            <div class="detail-card">
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                    <span style="font-size:13px;color:var(--text-secondary);">App Name</span>
+                    <span style="font-size:13px;font-weight:600;">NgocThanh Inventory</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;">
+                    <span style="font-size:13px;color:var(--text-secondary);">Version</span>
+                    <span style="font-size:13px;font-weight:600;">2.0.0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CART FAB -->
+        <button id="cart-fab" onclick="openCartModal()"
+            style="display:none;position:fixed;bottom:calc(var(--nav-height) + var(--safe-bottom) + 16px);right:16px;
+                   z-index:150;width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;
+                   color:#fff;font-size:22px;box-shadow:0 4px 16px rgba(0,0,0,0.4);cursor:pointer;
+                   align-items:center;justify-content:center;">
+            🛒<span id="cart-count-badge"
+                style="position:absolute;top:2px;right:2px;background:var(--danger);color:#fff;
+                       border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:700;
+                       display:flex;align-items:center;justify-content:center;"></span>
+        </button>
+
+        <!-- BOTTOM NAV -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-screen="dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-btn" data-screen="scan">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2"/><path d="M17 3h2a2 2 0 012 2v2"/><path d="M21 17v2a2 2 0 01-2 2h-2"/><path d="M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                <span>Scan</span>
+            </button>
+            <button class="nav-btn" data-screen="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span>Search</span>
+            </button>
+            <button class="nav-btn" data-screen="settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                <span>Settings</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ============================================================
+         PRODUCT DETAIL MODAL
+         ============================================================ -->
+    <div class="modal-backdrop" id="product-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div id="modal-content">
+                <!-- Filled dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         COMPATIBILITY MODAL
+         ============================================================ -->
+    <div class="modal-backdrop" id="compat-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <button onclick="closeModal('compat-modal');openProductDetail(state.compatSku)" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Back
+                </button>
+                <h2 style="margin:0;">Cross-Compatibility</h2>
+                <button id="add-compat-btn" class="btn btn-primary btn-sm" style="display:none;" onclick="toggleAddCompatForm()">+ Add</button>
+            </div>
+            <div id="compat-content"></div>
+            <!-- Add form (admin only, hidden by default) -->
+            <div id="add-compat-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+                <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Add Cross-Compatible SKU</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <input type="text" id="compat-other-sku" placeholder="Compatible SKU (e.g. NT-1023)" style="width:100%;" oninput="previewCompatSku(this.value)">
+                    <div id="compat-preview" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;"></div>
+                    <select id="compat-level" style="width:100%;">
+                        <option value="FULL">FULL — Direct replacement</option>
+                        <option value="PARTIAL">PARTIAL — Works with limitations</option>
+                        <option value="WITH_MODIFICATION">WITH MODIFICATION — Needs changes</option>
+                    </select>
+                    <input type="text" id="compat-note" placeholder="Note (optional)" style="width:100%;">
+                    <button type="button" id="save-compat-btn" class="btn btn-primary btn-block" onclick="saveCompatibility()">Save</button>
+                    <div id="compat-form-msg" style="font-size:12px;text-align:center;display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ADMIN ADJUST MODAL
+         ============================================================ -->
+    <div class="modal-backdrop" id="adjust-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+                <button onclick="closeModal('adjust-modal');openProductDetail(state.selectedProduct.sku)" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Back
+                </button>
+                <h2 style="margin:0;">Adjust Inventory</h2>
+            </div>
+            <form id="adjust-form" style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
+                <div class="receive-current">
+                    <span style="color:var(--text-secondary);">Current Stock</span>
+                    <span class="current-qty" id="adjust-current-qty">0</span>
+                </div>
+                <label>New Quantity</label>
+                <input type="number" id="adjust-new-qty" min="0" required>
+                <label>Reason</label>
+                <select id="adjust-reason" required>
+                    <option value="">Select reason...</option>
+                    <option value="Physical count correction">Physical count correction</option>
+                    <option value="Damaged goods">Damaged goods</option>
+                    <option value="Customer return">Customer return</option>
+                    <option value="Data entry error">Data entry error</option>
+                    <option value="Other">Other</option>
+                </select>
+                <label>Notes (optional)</label>
+                <textarea id="adjust-notes" placeholder="Additional details..."></textarea>
+                <button type="submit" class="btn btn-primary btn-block">Confirm Adjustment</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- EXCEL IMPORT/EXPORT MODAL -->
+    <div class="modal-backdrop" id="excel-modal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h2>Import / Export</h2>
+                <button type="button" onclick="closeAllModals()" style="background:none;border:none;color:var(--text-secondary);font-size:20px;cursor:pointer;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
+            </div>
+
+            <!-- TABS -->
+            <div style="display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:10px;">
+                <button type="button" class="tab-btn active" data-tab="export" style="flex:1;padding:10px;text-align:center;cursor:pointer;border:none;background:none;color:var(--accent);border-bottom:2px solid var(--accent);">Export</button>
+                <button type="button" class="tab-btn" data-tab="import" style="flex:1;padding:10px;text-align:center;cursor:pointer;border:none;background:none;color:var(--text-secondary);">Import</button>
+            </div>
+
+            <!-- EXPORT TAB -->
+            <div id="tab-export" class="tab-content" style="display:block;">
+                <div style="margin-bottom:15px;font-size:13px;color:var(--text-secondary);">
+                    <strong>Columns included:</strong><br>
+                    SKU, Name, Manufacturer, Manufacturer Code, Category, Qty, Location, Selling Price, Cost, Reorder Level, Reorder Qty, Model Year Start, Model Year End, Description, Discontinued
+                </div>
+                <button type="button" id="export-btn" class="btn btn-primary btn-block" style="cursor:pointer;">📥 Download Excel</button>
+                <div id="export-msg" style="margin-top:10px;font-size:12px;text-align:center;display:none;"></div>
+            </div>
+
+            <!-- IMPORT TAB -->
+            <div id="tab-import" class="tab-content" style="display:none;">
+                <div style="margin-bottom:15px;">
+                    <label style="display:block;margin-bottom:8px;font-size:14px;">Select import file:</label>
+                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Expected format: <code>NgocThanh_DD_MM_YYYY_IN.xlsx</code></div>
+                    <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="width:100%;">
+                </div>
+                <div id="import-preview" style="margin-bottom:15px;font-size:12px;display:none;">
+                    <strong>Preview (first 5 rows):</strong>
+                    <div id="preview-content" style="background:var(--bg-secondary);padding:10px;border-radius:var(--radius-sm);margin-top:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:11px;"></div>
+                </div>
+                <label id="wipe-replace-row" style="display:none;align-items:flex-start;gap:10px;margin-bottom:12px;padding:10px;background:rgba(220,38,38,0.1);border:1px solid var(--danger);border-radius:var(--radius-sm);cursor:pointer;">
+                    <input type="checkbox" id="wipe-replace-chk" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;cursor:pointer;">
+                    <span style="font-size:12px;line-height:1.4;"><strong style="color:var(--danger);">Wipe &amp; Replace</strong> — permanently delete ALL existing products before importing. Use when your sheet is the complete new inventory. A backup will be downloaded first.</span>
+                </label>
+                <button type="button" id="import-btn" class="btn btn-primary btn-block" style="cursor:pointer;display:none;">⬆️ Upload to Database</button>
+                <div id="import-msg" style="margin-top:10px;font-size:12px;text-align:center;display:none;"></div>
+                <div id="import-errors" style="margin-top:10px;font-size:11px;color:var(--danger);display:none;background:var(--bg-secondary);padding:8px;border-radius:var(--radius-sm);max-height:150px;overflow-y:auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         CART MODAL
+         ============================================================ -->
+    <div class="modal-backdrop" id="cart-modal">
+        <div class="modal" style="max-height:92vh;">
+            <div class="modal-handle"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h2 style="margin:0;">Cart</h2>
+                <button onclick="closeModal('cart-modal')"
+                    style="background:none;border:none;color:var(--text-secondary);font-size:22px;cursor:pointer;
+                           width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
+            </div>
+
+            <div id="cart-items-list"></div>
+
+            <div id="cart-empty" class="empty-state">
+                <p>Cart is empty</p>
+            </div>
+
+            <div id="cart-totals" style="display:none;border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">
+                <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-bottom:16px;">
+                    <span>Total</span>
+                    <span id="cart-total-amount" style="color:var(--accent);"></span>
+                </div>
+
+                <!-- Customer info -->
+                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+                    <input type="text" id="cart-customer-name" placeholder="Customer name (optional)">
+                    <input type="tel" id="cart-customer-phone" placeholder="Phone number (optional)">
+                    <textarea id="cart-order-notes" placeholder="Order notes (optional)" style="min-height:60px;"></textarea>
+                </div>
+
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary" style="flex:1;" onclick="clearCart()">Clear</button>
+                    <button class="btn btn-primary" style="flex:2;" id="checkout-btn" onclick="handleCheckout()">
+                        Checkout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         RECEIPT MODAL
+         ============================================================ -->
+    <div class="modal-backdrop" id="receipt-modal">
+        <div class="modal" style="max-height:92vh;">
+            <div class="modal-handle"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h2 style="margin:0;">Receipt</h2>
+                <button onclick="closeModal('receipt-modal')"
+                    style="background:none;border:none;color:var(--text-secondary);font-size:22px;cursor:pointer;
+                           width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
+            </div>
+            <div id="receipt-content"></div>
+            <div style="display:flex;gap:8px;margin-top:16px;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('receipt-modal')">Close</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="printReceipt()">Print</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox -->
+    <div id="lightbox">
+        <button id="lightbox-close">✕</button>
+        <button id="lightbox-prev">‹</button>
+        <div id="lightbox-img-wrap">
+            <img id="lightbox-img" src="" alt="">
+        </div>
+        <button id="lightbox-next">›</button>
+        <div id="lightbox-dots"></div>
+        <div id="lightbox-caption"></div>
+    </div>
+
+</div>
+
+<!-- JS files — load order matters (globals must be defined before use) -->
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/navigation.js"></script>
+<script src="js/data.js"></script>
+<script src="js/render.js"></script>
+<script src="js/search.js"></script>
+<script src="js/products.js"></script>
+<script src="js/receive.js"></script>
+<script src="js/adjust.js"></script>
+<script src="js/scanner.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/sales.js"></script>
+<script src="js/init.js"></script>
+</body>
+</html>

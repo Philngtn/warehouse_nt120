@@ -178,17 +178,32 @@ async function refreshDriveImages(sku) {
 let _lbImgs = [];
 let _lbIdx  = 0;
 
+function initLightbox() {
+    let startX = 0;
+    const onStart = e => { startX = (e.touches ? e.touches[0] : e).clientX; };
+    const onEnd   = e => {
+        const dx = (e.changedTouches ? e.changedTouches[0] : e).clientX - startX;
+        if (Math.abs(dx) > 40) lightboxGo(dx < 0 ? 1 : -1);
+    };
+    $('lightbox-close').onclick = closeLightbox;
+    $('lightbox-prev').onclick  = () => lightboxGo(-1);
+    $('lightbox-next').onclick  = () => lightboxGo(1);
+    $('lightbox').addEventListener('touchstart', onStart, { passive: true });
+    $('lightbox').addEventListener('touchend',   onEnd,   { passive: true });
+    $('lightbox').addEventListener('mousedown',  onStart);
+    $('lightbox').addEventListener('mouseup',    onEnd);
+}
+
 function openLightbox(imgs, startIdx) {
     _lbImgs = imgs;
     _lbIdx  = startIdx;
     _lbRender();
-    document.getElementById('lightbox').classList.add('active');
+    $('lightbox').classList.add('active');
     document.addEventListener('keydown', _lbKeydown);
-    _lbInitSwipe();
 }
 
 function closeLightbox() {
-    document.getElementById('lightbox').classList.remove('active');
+    $('lightbox').classList.remove('active');
     document.removeEventListener('keydown', _lbKeydown);
 }
 
@@ -200,22 +215,18 @@ function lightboxGo(delta) {
 }
 
 function _lbRender() {
-    const img   = document.getElementById('lightbox-img');
-    const prev  = document.getElementById('lightbox-prev');
-    const next  = document.getElementById('lightbox-next');
-    const dots  = document.getElementById('lightbox-dots');
-    const cap   = document.getElementById('lightbox-caption');
+    const img  = $('lightbox-img');
+    const prev = $('lightbox-prev');
+    const next = $('lightbox-next');
+    const dots = $('lightbox-dots');
 
     img.src = _lbImgs[_lbIdx].image_url;
     img.alt = _lbImgs[_lbIdx].image_title || '';
-    cap.textContent = _lbImgs[_lbIdx].image_title || '';
+    $('lightbox-caption').textContent = _lbImgs[_lbIdx].image_title || '';
     prev.disabled = _lbIdx === 0;
     next.disabled = _lbIdx === _lbImgs.length - 1;
-
-    // Show prev/next only when multiple images
     prev.style.display = _lbImgs.length > 1 ? '' : 'none';
     next.style.display = _lbImgs.length > 1 ? '' : 'none';
-
     dots.innerHTML = _lbImgs.length > 1
         ? _lbImgs.map((_, i) => `<span class="carousel-dot${i === _lbIdx ? ' active' : ''}"></span>`).join('')
         : '';
@@ -225,26 +236,6 @@ function _lbKeydown(e) {
     if (e.key === 'ArrowLeft')  lightboxGo(-1);
     if (e.key === 'ArrowRight') lightboxGo(1);
     if (e.key === 'Escape')     closeLightbox();
-}
-
-function _lbInitSwipe() {
-    const el = document.getElementById('lightbox');
-    let startX = 0;
-    const onStart = e => { startX = (e.touches ? e.touches[0] : e).clientX; };
-    const onEnd   = e => {
-        const dx = (e.changedTouches ? e.changedTouches[0] : e).clientX - startX;
-        if (Math.abs(dx) > 40) lightboxGo(dx < 0 ? 1 : -1);
-    };
-    // Remove old listeners then add fresh ones
-    el.replaceWith(el.cloneNode(true)); // clears old listeners
-    const fresh = document.getElementById('lightbox');
-    fresh.querySelector('#lightbox-close').onclick = closeLightbox;
-    fresh.querySelector('#lightbox-prev').onclick  = () => lightboxGo(-1);
-    fresh.querySelector('#lightbox-next').onclick  = () => lightboxGo(1);
-    fresh.addEventListener('touchstart', onStart, { passive: true });
-    fresh.addEventListener('touchend',   onEnd,   { passive: true });
-    fresh.addEventListener('mousedown',  onStart);
-    fresh.addEventListener('mouseup',    onEnd);
 }
 
 function closeModal(id) {

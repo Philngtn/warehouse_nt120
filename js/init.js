@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     populateYearFilter();
+    initLightbox();
 
     // Auth
     $('login-form').addEventListener('submit', handleLogin);
