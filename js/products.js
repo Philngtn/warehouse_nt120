@@ -140,13 +140,32 @@ async function loadProductImages(sku) {
     const allImgs = [...driveImgs, ...localImgs, ...dbImgs];
     if (!allImgs.length) return;
 
+    const refreshBtn = CONFIG.DRIVE_FOLDER_ID
+        ? `<button onclick="refreshDriveImages('${escapeHtml(sku)}')"
+               style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:0;margin-left:8px;">
+               ↻ Refresh
+           </button>`
+        : '';
+
     const container = $('modal-images');
-    let html = '<div style="margin-top:16px;"><label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Images</label><div class="image-gallery">';
+    let html = `<div style="margin-top:16px;">
+        <div style="display:flex;align-items:center;">
+            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Images</label>
+            ${refreshBtn}
+        </div>
+        <div class="image-gallery">`;
     allImgs.forEach(img => {
         html += `<div class="img-thumb"><img src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.image_title || '')}" loading="lazy"></div>`;
     });
     html += '</div></div>';
     container.innerHTML = html;
+}
+
+async function refreshDriveImages(sku) {
+    // Clear both caches for this SKU so fetchDriveImages hits the API
+    delete state.driveImageCache[sku];
+    try { localStorage.removeItem(DRIVE_IMG_CACHE_PREFIX + sku); } catch (_) {}
+    await loadProductImages(sku);
 }
 
 function closeModal(id) {
