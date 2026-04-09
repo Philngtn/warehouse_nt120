@@ -8,11 +8,24 @@ async function loadImageManifest() {
     } catch (_) {}
 }
 
-// Fetch the list of SKU-named subfolders from Google Drive once at startup.
-// Stores { sku: folderId } in state.driveFolderIndex.
-// Per-SKU image lists are fetched lazily when a product modal opens.
+// Drive folder index — cached in localStorage, refreshed every DRIVE_CACHE_TTL ms.
+// Only one API call per TTL period regardless of how often the page loads.
+const DRIVE_CACHE_KEY = 'nt_drive_folder_index';
+const DRIVE_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
 async function loadDriveFolderIndex() {
     if (!CONFIG.DRIVE_FOLDER_ID || !CONFIG.DRIVE_API_KEY) return;
+
+    // Use cached value if still fresh
+    try {
+        const cached = JSON.parse(localStorage.getItem(DRIVE_CACHE_KEY) || 'null');
+        if (cached && (Date.now() - cached.ts) < DRIVE_CACHE_TTL) {
+            state.driveFolderIndex = cached.index;
+            return;
+        }
+    } catch (_) {}
+
+    // Fetch from Drive API
     try {
         const q = encodeURIComponent(`'${CONFIG.DRIVE_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
         const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1000&key=${CONFIG.DRIVE_API_KEY}`;
@@ -21,7 +34,8 @@ async function loadDriveFolderIndex() {
         const { files } = await res.json();
         state.driveFolderIndex = {};
         files.forEach(f => { state.driveFolderIndex[f.name] = f.id; });
-        console.log(`Drive folder index loaded: ${files.length} SKU folder(s)`);
+        localStorage.setItem(DRIVE_CACHE_KEY, JSON.stringify({ ts: Date.now(), index: state.driveFolderIndex }));
+        console.log(`Drive folder index fetched: ${files.length} SKU folder(s)`);
     } catch (err) {
         console.warn('Drive folder index failed:', err.message);
     }

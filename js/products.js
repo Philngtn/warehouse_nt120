@@ -75,9 +75,20 @@ async function openProductDetail(sku) {
     loadProductImages(product.sku);
 }
 
+const DRIVE_IMG_CACHE_PREFIX = 'nt_drive_imgs_';
+
 async function fetchDriveImages(sku) {
-    // Return cached result if already fetched
+    // 1. In-memory cache (fastest — within same session)
     if (state.driveImageCache[sku] !== undefined) return state.driveImageCache[sku];
+
+    // 2. localStorage cache (survives page reload, same TTL as folder index)
+    try {
+        const cached = JSON.parse(localStorage.getItem(DRIVE_IMG_CACHE_PREFIX + sku) || 'null');
+        if (cached && (Date.now() - cached.ts) < DRIVE_CACHE_TTL) {
+            state.driveImageCache[sku] = cached.imgs;
+            return cached.imgs;
+        }
+    } catch (_) {}
 
     const folderId = state.driveFolderIndex && state.driveFolderIndex[sku];
     if (!folderId || !CONFIG.DRIVE_API_KEY) {
@@ -85,8 +96,9 @@ async function fetchDriveImages(sku) {
         return [];
     }
 
+    // 3. Fetch from Drive API
     try {
-        const IMAGE_MIMES = 'image/jpeg,image/png,image/webp,image/gif';
+        const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
         const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType)&pageSize=100&key=${CONFIG.DRIVE_API_KEY}`;
         const res = await fetch(url);
@@ -95,11 +107,9 @@ async function fetchDriveImages(sku) {
         const imgs = files
             .filter(f => IMAGE_MIMES.includes(f.mimeType))
             .sort((a, b) => a.name.localeCompare(b.name))
-            .map(f => ({
-                image_url: `https://drive.google.com/uc?export=view&id=${f.id}`,
-                image_title: f.name
-            }));
+            .map(f => ({ image_url: `https://drive.google.com/uc?export=view&id=${f.id}`, image_title: f.name }));
         state.driveImageCache[sku] = imgs;
+        localStorage.setItem(DRIVE_IMG_CACHE_PREFIX + sku, JSON.stringify({ ts: Date.now(), imgs }));
         return imgs;
     } catch (err) {
         console.warn('Drive image fetch failed:', err.message);
