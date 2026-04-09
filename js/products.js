@@ -77,9 +77,9 @@ async function openProductDetail(sku) {
 
 async function loadProductImages(sku) {
     const localFiles = (state.localImages && state.localImages[sku]) || [];
-    const localImgs = localFiles.map(f => ({
-        image_url: `part_images/${encodeURIComponent(sku)}/${encodeURIComponent(f)}`,
-        image_title: f
+    const localImgs = localFiles.map(url => ({
+        image_url: url,
+        image_title: url.split('/').pop()
     }));
 
     let dbImgs = [];
