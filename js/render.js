@@ -25,26 +25,9 @@ function renderProductItem(product) {
     const qtyClz = qtyClass(product.qty, product.reorder_level);
     const catIcon = product.category_icon || '📦';
 
-    const localImgs = (state.localImages && state.localImages[product.sku]) || [];
-    let imgHtml;
-    if (localImgs.length > 1) {
-        const slides = localImgs.map((f, i) =>
-            `<img src="part_images/${escapeHtml(product.sku)}/${escapeHtml(f)}" alt="" loading="lazy">`
-        ).join('');
-        const dots = localImgs.map((_, i) =>
-            `<span class="carousel-dot${i === 0 ? ' active' : ''}"></span>`
-        ).join('');
-        imgHtml = `<div class="img-carousel" data-idx="0">
-            <div class="img-carousel-inner">${slides}</div>
-            <div class="carousel-dots">${dots}</div>
-        </div>`;
-    } else if (localImgs.length === 1) {
-        imgHtml = `<img src="part_images/${escapeHtml(product.sku)}/${escapeHtml(localImgs[0])}" alt="" loading="lazy">`;
-    } else if (product.image_url) {
-        imgHtml = `<img src="${escapeHtml(product.image_url)}" alt="" loading="lazy">`;
-    } else {
-        imgHtml = catIcon;
-    }
+    const imgHtml = product.image_url
+        ? `<img src="${escapeHtml(product.image_url)}" alt="" loading="lazy">`
+        : catIcon;
 
     const canAddToCart = product.selling_price != null && product.qty > 0;
     const cartBtn = canAddToCart

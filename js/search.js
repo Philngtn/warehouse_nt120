@@ -59,7 +59,6 @@ async function performSearch() {
     bar.style.display = 'flex';
     countEl.textContent = `${results.length} product${results.length !== 1 ? 's' : ''}`;
     container.innerHTML = results.map(renderProductItem).join('');
-    initCarousels(container);
 }
 
 function toggleLowStockFilter() {
