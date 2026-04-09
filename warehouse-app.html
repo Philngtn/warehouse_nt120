@@ -381,8 +381,16 @@
             background: #000;
             border-radius: var(--radius);
             overflow: hidden;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
         }
+        .camera-select-row {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .camera-select-row.visible { display: flex; }
+        .camera-select-row select { flex: 1; font-size: 13px; padding: 8px 10px; }
         .scanner-container video {
             width: 100%;
             height: 100%;
@@ -930,6 +938,12 @@
                     <div class="scanner-crosshair"></div>
                 </div>
                 <div class="scanner-status" id="scanner-status">Initializing camera...</div>
+            </div>
+
+            <!-- Camera selector (shown when multiple cameras available) -->
+            <div class="camera-select-row" id="camera-select-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:var(--text-muted)"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                <select id="camera-select" onchange="switchCamera(this.value)"></select>
             </div>
 
             <!-- Manual fallback -->
@@ -2649,7 +2663,6 @@ async function startScanner() {
     statusEl.textContent = 'Initializing camera...';
 
     try {
-        // Check if ZXing is available
         if (typeof ZXing === 'undefined') {
             statusEl.textContent = 'Scanner library not loaded';
             return;
@@ -2659,43 +2672,72 @@ async function startScanner() {
         const videoEl = $('scanner-video');
 
         const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-        // Prefer back camera
-        let deviceId = undefined;
-        const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
-        if (backCam) deviceId = backCam.deviceId;
-        else if (devices.length) deviceId = devices[0].deviceId;
 
-        if (!deviceId && devices.length === 0) {
+        if (devices.length === 0) {
             statusEl.textContent = 'No camera found. Use manual input.';
             return;
         }
 
-        state.codeReader.decodeFromVideoDevice(deviceId, videoEl, async (result, err) => {
-            if (result) {
-                const code = result.getText();
-                statusEl.textContent = `Found: ${code}`;
-
-                // Lookup the product
-                showLoading();
-                const product = await lookupProduct(code);
-                hideLoading();
-
-                if (product) {
-                    showScannedProduct(product);
-                } else {
-                    showToast(`No product found for: ${code}`, 'error');
-                    $('manual-sku-input').value = code;
-                }
-            }
+        // Populate camera selector if multiple cameras
+        const selectRow = $('camera-select-row');
+        const selectEl = $('camera-select');
+        selectEl.innerHTML = '';
+        devices.forEach((d, i) => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || `Camera ${i + 1}`;
+            selectEl.appendChild(opt);
         });
 
-        state.scannerActive = true;
-        statusEl.textContent = 'Scanning... Point at barcode';
+        // Prefer back/rear camera on mobile; fall back to first (webcam on laptop)
+        const backCam = devices.find(d => /back|rear|environment/i.test(d.label));
+        const deviceId = backCam ? backCam.deviceId : devices[0].deviceId;
+        selectEl.value = deviceId;
+
+        if (devices.length > 1) selectRow.classList.add('visible');
+
+        await startDecoding(deviceId, videoEl, statusEl);
 
     } catch (err) {
         console.error('Scanner error:', err);
-        statusEl.textContent = 'Camera access denied. Use manual input.';
+        $('scanner-status').textContent = 'Camera access denied. Use manual input.';
     }
+}
+
+async function startDecoding(deviceId, videoEl, statusEl) {
+    if (!statusEl) statusEl = $('scanner-status');
+    if (!videoEl) videoEl = $('scanner-video');
+
+    state.codeReader.decodeFromVideoDevice(deviceId, videoEl, async (result, err) => {
+        if (result) {
+            const code = result.getText();
+            statusEl.textContent = `Found: ${code}`;
+            showLoading();
+            const product = await lookupProduct(code);
+            hideLoading();
+            if (product) {
+                showScannedProduct(product);
+            } else {
+                showToast(`No product found for: ${code}`, 'error');
+                $('manual-sku-input').value = code;
+            }
+        }
+    });
+
+    state.scannerActive = true;
+    // Detect if likely a laptop (no back camera found among devices)
+    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+    const hasBackCam = devices.some(d => /back|rear|environment/i.test(d.label));
+    statusEl.textContent = hasBackCam ? 'Scanning... Point at barcode' : 'Scanning... Hold barcode up to webcam';
+}
+
+async function switchCamera(deviceId) {
+    if (state.codeReader) {
+        state.codeReader.reset();
+        state.scannerActive = false;
+    }
+    state.codeReader = new ZXing.BrowserMultiFormatReader();
+    await startDecoding(deviceId);
 }
 
 function stopScanner() {
@@ -2703,6 +2745,7 @@ function stopScanner() {
         state.codeReader.reset();
         state.scannerActive = false;
     }
+    $('camera-select-row').classList.remove('visible');
 }
 
 function showScannedProduct(product) {
