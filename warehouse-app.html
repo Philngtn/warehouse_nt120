@@ -1026,6 +1026,11 @@
                 <button type="button" id="filter-low-stock-btn" class="filter-chip" onclick="toggleLowStockFilter()">⚠️ Low Stock</button>
             </div>
 
+            <div id="search-results-bar" style="display:none;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px;color:var(--text-secondary);">
+                <span id="search-results-count"></span>
+                <button type="button" class="filter-chip" onclick="exportSearchResults()" style="padding:6px 12px;font-size:12px;">📥 Export</button>
+            </div>
+
             <div class="product-list" id="search-results"></div>
             <div id="search-empty" class="empty-state" style="display:none;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1356,6 +1361,7 @@ const state = {
     codeReader: null,
     searchDebounce: null,
     lowStockFilter: false,
+    searchResults: [],
 };
 
 // ============================================================
@@ -1850,16 +1856,23 @@ async function performSearch() {
         results = results.filter(p => p.qty <= (p.reorder_level || 5));
     }
 
+    state.searchResults = results;
+
     const container = $('search-results');
     const empty = $('search-empty');
+    const bar = $('search-results-bar');
+    const countEl = $('search-results-count');
 
     if (!results.length) {
         container.innerHTML = '';
         empty.style.display = '';
+        bar.style.display = 'none';
         return;
     }
 
     empty.style.display = 'none';
+    bar.style.display = 'flex';
+    countEl.textContent = `${results.length} product${results.length !== 1 ? 's' : ''}`;
     container.innerHTML = results.map(renderProductItem).join('');
 }
 
@@ -1876,6 +1889,25 @@ function showLowStockList() {
     $('filter-year').value = '';
     switchScreen('search');
     performSearch();
+}
+
+function exportSearchResults() {
+    const products = state.searchResults;
+    if (!products || !products.length) {
+        showToast('No products to export', 'error');
+        return;
+    }
+    try {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(buildInventoryRows(products));
+        XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+        const term = $('search-input').value.trim();
+        const label = state.lowStockFilter ? 'LowStock' : (term ? 'Search' : 'Filtered');
+        XLSX.writeFile(wb, `NgocThanh_${label}_${getDateTimeStamp()}.xlsx`);
+        showToast(`Exported ${products.length} products`, 'success');
+    } catch (err) {
+        showToast('Export failed: ' + err.message, 'error');
+    }
 }
 
 // Dashboard quick search
