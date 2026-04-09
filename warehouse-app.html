@@ -656,6 +656,26 @@
             padding: 10px 12px;
             font-size: 14px;
         }
+        .filter-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .filter-chip.active {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border-color: var(--warning);
+        }
 
         /* ============================================================
            COMPATIBILITY TABLE
@@ -919,7 +939,7 @@
                     <div class="stat-value" id="stat-total-skus">-</div>
                     <div class="stat-label">Total SKUs</div>
                 </div>
-                <div class="stat-card warning" id="stat-low-card">
+                <div class="stat-card warning" id="stat-low-card" onclick="showLowStockList()" style="cursor:pointer;" title="View low stock products">
                     <div class="stat-value" id="stat-low-stock">-</div>
                     <div class="stat-label">Low Stock</div>
                 </div>
@@ -1003,6 +1023,7 @@
                 <select id="filter-year">
                     <option value="">All Years</option>
                 </select>
+                <button type="button" id="filter-low-stock-btn" class="filter-chip" onclick="toggleLowStockFilter()">⚠️ Low Stock</button>
             </div>
 
             <div class="product-list" id="search-results"></div>
@@ -1334,6 +1355,7 @@ const state = {
     scannerActive: false,
     codeReader: null,
     searchDebounce: null,
+    lowStockFilter: false,
 };
 
 // ============================================================
@@ -1545,6 +1567,11 @@ function toggleBuyingPrice(el) {
 // NAVIGATION
 // ============================================================
 function switchScreen(name) {
+    // Clear low-stock filter when leaving search screen
+    if (state.currentScreen === 'search' && name !== 'search') {
+        state.lowStockFilter = false;
+    }
+
     state.currentScreen = name;
 
     // Update nav buttons
@@ -1789,6 +1816,9 @@ async function performSearch() {
     const manufacturerId = $('filter-manufacturer').value;
     const yearFilter = $('filter-year').value;
 
+    // Sync low-stock chip visual state
+    $('filter-low-stock-btn').classList.toggle('active', state.lowStockFilter);
+
     let results = state.inventory;
 
     if (term) {
@@ -1816,6 +1846,10 @@ async function performSearch() {
         );
     }
 
+    if (state.lowStockFilter) {
+        results = results.filter(p => p.qty <= (p.reorder_level || 5));
+    }
+
     const container = $('search-results');
     const empty = $('search-empty');
 
@@ -1827,6 +1861,21 @@ async function performSearch() {
 
     empty.style.display = 'none';
     container.innerHTML = results.map(renderProductItem).join('');
+}
+
+function toggleLowStockFilter() {
+    state.lowStockFilter = !state.lowStockFilter;
+    performSearch();
+}
+
+function showLowStockList() {
+    state.lowStockFilter = true;
+    $('search-input').value = '';
+    $('filter-category').value = '';
+    $('filter-manufacturer').value = '';
+    $('filter-year').value = '';
+    switchScreen('search');
+    performSearch();
 }
 
 // Dashboard quick search
