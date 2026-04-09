@@ -2768,6 +2768,8 @@ async function listVideoDevices() {
     let stream = null;
     try { stream = await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) { /* surfaces in caller */ }
     if (stream) stream.getTracks().forEach(t => t.stop());
+    // Small delay to ensure camera is fully released before ZXing grabs it
+    await new Promise(r => setTimeout(r, 300));
     const all = await navigator.mediaDevices.enumerateDevices();
     return all.filter(d => d.kind === 'videoinput');
 }
@@ -2854,7 +2856,7 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     const constraints = {
         video: hasBackCam
             ? { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-            : { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+            : { deviceId: { ideal: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
     };
 
     let scanCooldown = false;
