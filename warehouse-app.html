@@ -488,6 +488,7 @@
             text-transform: uppercase;
             letter-spacing: 0.8px;
             line-height: 1;
+            margin-bottom: 0;
         }
         .detail-field .field-value {
             font-size: 14px;
@@ -785,6 +786,20 @@
         /* Hide cost for staff via JS (class toggled) */
         .cost-hidden { display: none !important; }
 
+        /* Buying price reveal toggle */
+        .buying-price-field { cursor: pointer; user-select: none; }
+        .buying-price-field .price-masked {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            color: var(--text-muted);
+        }
+        .buying-price-field .price-reveal {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
         /* Manual SKU input area */
         .manual-input {
             display: flex;
@@ -1051,15 +1066,12 @@
             <!-- Account -->
             <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Account</h3></div>
             <div class="detail-card" style="margin-bottom:16px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
-                    <div>
-                        <div style="font-size:13px;font-weight:600;">Signed in as</div>
-                        <div id="settings-email" style="font-size:12px;color:var(--text-secondary);margin-top:2px;"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;">
+                    <button class="btn btn-secondary btn-sm" style="padding:8px 14px;font-size:13px;flex-shrink:0;" onclick="handleLogout()">Sign Out</button>
+                    <div style="text-align:right;">
+                        <div id="settings-email" style="font-size:12px;color:var(--text-secondary);"></div>
+                        <span id="settings-role-badge" class="role-badge" style="margin-top:4px;display:inline-block;"></span>
                     </div>
-                    <span id="settings-role-badge" class="role-badge"></span>
-                </div>
-                <div style="padding:12px 0;">
-                    <button class="btn btn-secondary btn-block" onclick="handleLogout()">Sign Out</button>
                 </div>
             </div>
 
@@ -1449,6 +1461,24 @@ function enterApp() {
     loadInitialData();
     setupRealtime();
     switchScreen('dashboard');
+}
+
+// ============================================================
+// BUYING PRICE TOGGLE
+// ============================================================
+function toggleBuyingPrice(el) {
+    const masked = el.querySelector('.price-masked');
+    const hint = el.querySelector('.price-reveal');
+    const actual = el.dataset.price;
+    if (masked.dataset.visible === '1') {
+        masked.textContent = '••••••';
+        masked.dataset.visible = '0';
+        if (hint) hint.textContent = 'Tap to reveal';
+    } else {
+        masked.textContent = actual;
+        masked.dataset.visible = '1';
+        if (hint) hint.textContent = 'Tap to hide';
+    }
 }
 
 // ============================================================
@@ -1872,9 +1902,10 @@ async function openProductDetail(sku) {
                         <div class="field-value">${formatCurrency(product.selling_price)}</div>
                     </div>
                     ${isAdmin ? `
-                    <div class="detail-field admin-only">
+                    <div class="detail-field buying-price-field" data-price="${formatCurrency(product.cost)}" onclick="toggleBuyingPrice(this)">
                         <label>Buying Price</label>
-                        <div class="field-value">${formatCurrency(product.cost)}</div>
+                        <div class="price-masked" data-visible="0">••••••</div>
+                        <div class="price-reveal">Tap to reveal</div>
                     </div>` : `
                     <div class="detail-field">
                         <label>Reorder Level</label>
@@ -2712,7 +2743,7 @@ function showScannedProduct(product) {
                     <label>Selling Price</label>
                     <div class="field-value">${formatCurrency(product.selling_price)}</div>
                 </div>
-                ${isAdmin ? `<div class="detail-field"><label>Buying Price</label><div class="field-value">${formatCurrency(product.cost)}</div></div>` : '<div class="detail-field"></div>'}
+                ${isAdmin ? `<div class="detail-field buying-price-field" data-price="${formatCurrency(product.cost)}" onclick="toggleBuyingPrice(this)"><label>Buying Price</label><div class="price-masked" data-visible="0">••••••</div><div class="price-reveal">Tap to reveal</div></div>` : '<div class="detail-field"></div>'}
             </div>
             <div class="detail-row">
                 <div class="detail-field">
