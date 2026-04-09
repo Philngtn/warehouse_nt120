@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NgocThanh Inventory — mobile-first automotive parts warehouse management app for a small family store (3 staff, ~1000+ products). Single HTML file + Supabase backend.
+NgocThanh Inventory — mobile-first automotive parts warehouse management app for a small family store (3 staff, ~1000+ products). `warehouse-app.html` is the entry point; CSS and JS are split into separate files.
 
 ## Tech Stack
 
-- **Frontend**: Single `warehouse-app.html` file (vanilla JS, no frameworks)
+- **Frontend**: `warehouse-app.html` (entry point) + `css/styles.css` + `js/*.js` — vanilla JS, no frameworks
 - **Backend**: Supabase (PostgreSQL + Auth + Real-time subscriptions)
 - **Barcode**: ZXing library via CDN (`@ArishSultan/zxing-library`)
 - **Images**: Google Drive links stored in DB
@@ -31,10 +31,24 @@ Run `supabase-schema.sql` in the Supabase SQL Editor. This creates:
 
 ## Architecture
 
-All code lives in `warehouse-app.html`:
-- **CSS**: Dark mode, mobile-first (375px base), safe-area inset handling
-- **HTML**: Auth screen + 5 main screens (Dashboard, Scan, Search, Receive, Activity) + 3 modals (Product Detail, Cross-Compatibility, Admin Adjust)
-- **JS**: Config → Supabase client → App state → Utils → Auth → Navigation → Data loading → Render functions → Search → Product lookup (SKU → manufacturer code → name fallback) → Receive stock → Adjust → Barcode scanner → Realtime subscriptions → Event listeners
+- **`warehouse-app.html`**: HTML structure only — Auth screen + 6 main screens (Dashboard, Scan, Search, Receive, Activity, Sales History) + 5 modals (Product Detail, Cross-Compatibility, Admin Adjust, Cart, Receipt)
+- **`css/styles.css`**: All styles — dark mode, mobile-first (375px base), safe-area inset handling, print styles
+- **`js/` load order** (globals, no ES modules — order matters):
+  - `config.js` — CONFIG, `db`, `initSupabase()`, `state`
+  - `utils.js` — `$`, `$$`, toast, formatters, `debounce`, `closeAllModals`
+  - `auth.js` — login, logout, session check
+  - `navigation.js` — `enterApp`, `switchScreen`
+  - `data.js` — inventory load, dashboard stats, activity, realtime
+  - `render.js` — product/activity card renderers, filter populators
+  - `search.js` — `performSearch`, `performDashboardSearch`
+  - `products.js` — product detail, compatibility
+  - `receive.js` — stock receive flow
+  - `adjust.js` — admin adjust flow
+  - `scanner.js` — ZXing barcode scanner
+  - `excel.js` — Excel import/export with auto-backup
+  - `cart.js` — cart state, checkout, receipt (`sales_orders` + `transactions`)
+  - `sales.js` — sales history screen (`loadSalesHistory`, `viewSaleDetail`)
+  - `init.js` — `DOMContentLoaded` + all event listeners
 
 ## Key Patterns
 
@@ -63,7 +77,7 @@ Do this without asking for confirmation unless the change is destructive or ambi
 
 ## Constraints
 
-- Single HTML file must stay under 200KB
+- Keep individual files lean; `warehouse-app.html` is the entry point
 - No frameworks (React, Vue, etc.) — vanilla JS only
 - Touch targets minimum 44×44px
 - All buttons disabled during async operations
