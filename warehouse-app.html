@@ -2741,7 +2741,6 @@ async function startScanner() {
 
         if (devices.length > 1) selectRow.classList.add('visible');
 
-        state.codeReader = new ZXing.BrowserMultiFormatReader();
         await startDecoding(deviceId, $('scanner-video'), statusEl, !!backCam);
 
     } catch (err) {
@@ -2762,7 +2761,26 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     if (!statusEl) statusEl = $('scanner-status');
     if (!videoEl) videoEl = $('scanner-video');
 
+    // Hint common barcode formats for faster detection
+    const hints = new Map();
+    if (ZXing.DecodeHintType && ZXing.BarcodeFormat) {
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+            ZXing.BarcodeFormat.CODE_128,
+            ZXing.BarcodeFormat.CODE_39,
+            ZXing.BarcodeFormat.EAN_13,
+            ZXing.BarcodeFormat.EAN_8,
+            ZXing.BarcodeFormat.UPC_A,
+            ZXing.BarcodeFormat.QR_CODE,
+            ZXing.BarcodeFormat.DATA_MATRIX,
+        ]);
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    }
+    state.codeReader = new ZXing.BrowserMultiFormatReader(hints);
+
     let scanCooldown = false;
+    // Expose cooldown release so clearScanResult() can resume scanning
+    state._scanCooldownRelease = () => { scanCooldown = false; };
+
     state.codeReader.decodeFromVideoDevice(deviceId, videoEl, async (result, err) => {
         if (!result || scanCooldown) return;
         scanCooldown = true;
@@ -2774,12 +2792,11 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
         hideLoading();
         if (product) {
             showScannedProduct(product);
-            // Keep cooldown on until user dismisses / navigates away
+            // Cooldown released when user taps X
         } else {
             showToast(`No product found for: "${code}"`, 'error', 'scan-not-found');
             $('manual-sku-input').value = code;
             statusEl.textContent = hasBackCam ? 'Scanning... Point at barcode' : 'Scanning... Hold barcode up to webcam';
-            // Resume scanning after 2.5s
             setTimeout(() => { scanCooldown = false; }, 2500);
         }
     });
@@ -2795,7 +2812,6 @@ async function switchCamera(deviceId) {
     }
     const devices = await listVideoDevices();
     const hasBackCam = devices.some(d => /back|rear|environment/i.test(d.label));
-    state.codeReader = new ZXing.BrowserMultiFormatReader();
     await startDecoding(deviceId, null, null, hasBackCam);
 }
 
@@ -2815,6 +2831,15 @@ function retryScanner() {
     startScanner();
 }
 
+function clearScanResult() {
+    $('scan-result').style.display = 'none';
+    $('scan-empty').style.display = '';
+    $('manual-sku-input').value = '';
+    state.selectedProduct = null;
+    // Resume scanning
+    state._scanCooldownRelease && state._scanCooldownRelease();
+}
+
 function showScannedProduct(product) {
     state.selectedProduct = product;
     $('scan-empty').style.display = 'none';
@@ -2826,6 +2851,9 @@ function showScannedProduct(product) {
         : 'N/A';
 
     $('scan-detail-card').innerHTML = `
+        <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
+            <button onclick="clearScanResult()" style="background:none;border:none;color:var(--text-muted);font-size:22px;line-height:1;cursor:pointer;padding:0 2px;" title="Clear result">×</button>
+        </div>
         <div class="detail-header">
             <div>
                 <div class="detail-sku">${escapeHtml(product.sku)}</div>
