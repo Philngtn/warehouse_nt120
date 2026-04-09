@@ -28,13 +28,10 @@ async function loadSalesHistory(reset = false) {
     }
 
     if (dateFilter) {
-        const startOfDay = new Date(dateFilter);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(dateFilter);
-        endOfDay.setHours(23, 59, 59, 999);
+        // dateFilter is "YYYY-MM-DD" — build range without timezone shift
         query = query
-            .gte('created_at', startOfDay.toISOString())
-            .lte('created_at', endOfDay.toISOString());
+            .gte('created_at', `${dateFilter}T00:00:00.000`)
+            .lte('created_at', `${dateFilter}T23:59:59.999`);
     }
 
     const { data, error } = await query;
