@@ -1853,47 +1853,41 @@ async function performDashboardSearch() {
 // PRODUCT LOOKUP (used by scan + manual)
 // ============================================================
 async function lookupProduct(query) {
-    if (!db || !query) return null;
+    if (!query) return null;
 
-    query = query.trim();
-    const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
+    const q = query.trim().toLowerCase();
 
-    // Try exact SKU match (case-insensitive)
-    let { data } = await db
-        .from(viewName)
-        .select('*')
-        .ilike('sku', query)
-        .eq('is_active', true)
-        .limit(1);
+    // Search local cache first (same data source as manual search)
+    const inv = state.inventory || [];
 
-    if (data && data.length) return data[0];
+    // 1. Exact SKU (case-insensitive)
+    let match = inv.find(p => p.is_active !== false && p.sku && p.sku.toLowerCase() === q);
+    if (match) return match;
 
-    // Try manufacturer code (case-insensitive)
-    ({ data } = await db
-        .from(viewName)
-        .select('*')
-        .ilike('manufacturer_code', query)
-        .eq('is_active', true)
-        .limit(1));
+    // 2. Exact manufacturer code (case-insensitive)
+    match = inv.find(p => p.is_active !== false && p.manufacturer_code && p.manufacturer_code.toLowerCase() === q);
+    if (match) return match;
 
-    if (data && data.length) return data[0];
-
-    // Try name search (fuzzy)
-    ({ data } = await db
-        .from(viewName)
-        .select('*')
-        .ilike('name', `%${query}%`)
-        .eq('is_active', true)
-        .limit(5));
-
-    if (data && data.length === 1) return data[0];
-    if (data && data.length > 1) {
-        // Show in search results
-        $('search-input').value = query;
+    // 3. Name contains
+    const nameMatches = inv.filter(p => p.is_active !== false && p.name && p.name.toLowerCase().includes(q));
+    if (nameMatches.length === 1) return nameMatches[0];
+    if (nameMatches.length > 1) {
+        $('search-input').value = query.trim();
         switchScreen('search');
         performSearch();
         return null;
     }
+
+    // 4. Fallback: hit DB directly (in case cache is stale)
+    if (!db) return null;
+    const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
+    const { data } = await db
+        .from(viewName)
+        .select('*')
+        .ilike('sku', query.trim())
+        .eq('is_active', true)
+        .limit(1);
+    if (data && data.length) return data[0];
 
     return null;
 }
