@@ -2147,17 +2147,17 @@ async function saveCompatibility() {
 function goReceive(sku) {
     closeModal('product-modal');
     state.receiveFromSku = sku || null;
+    state.receiveFromScreen = state.currentScreen || 'scan';
     $('receive-search').value = sku;
     switchScreen('receive');
     lookupForReceive(sku);
 }
 
 function receiveBack() {
-    if (state.receiveFromSku) {
-        openProductDetail(state.receiveFromSku);
-    } else {
-        switchScreen('scan');
-    }
+    const returnScreen = state.receiveFromScreen || 'scan';
+    const returnSku = state.receiveFromSku;
+    switchScreen(returnScreen);
+    if (returnSku) openProductDetail(returnSku);
 }
 
 async function lookupForReceive(query) {
