@@ -292,12 +292,12 @@ async function showCompatibility(sku) {
             : item.compatibility_level === 'PARTIAL' ? 'compat-partial' : 'compat-mod';
 
         html += `
-            <div class="compat-item">
+            <div class="compat-item" style="cursor:pointer;" onclick="closeModal('compat-modal');openProductDetail('${escapeHtml(otherSku)}')">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <strong style="color:var(--accent);">${escapeHtml(otherSku)}</strong>
+                    <strong style="color:var(--accent);">${escapeHtml(otherSku)} →</strong>
                     <div style="display:flex;align-items:center;gap:8px;">
                         <span class="compat-level ${levelClass}">${item.compatibility_level}</span>
-                        ${isAdmin ? `<button onclick="deleteCompat('${item.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;padding:2px 4px;font-size:18px;line-height:1;" title="Remove">×</button>` : ''}
+                        ${isAdmin ? `<button onclick="event.stopPropagation();deleteCompat('${item.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;padding:2px 4px;font-size:18px;line-height:1;" title="Remove">×</button>` : ''}
                     </div>
                 </div>
                 <div style="font-size:13px;margin-top:8px;color:var(--text-secondary);">
