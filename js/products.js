@@ -75,13 +75,48 @@ async function openProductDetail(sku) {
     loadProductImages(product.sku);
 }
 
-async function loadProductImages(sku) {
-    const localFiles = (state.localImages && state.localImages[sku]) || [];
-    const localImgs = localFiles.map(url => ({
-        image_url: url,
-        image_title: url.split('/').pop()
-    }));
+async function fetchDriveImages(sku) {
+    // Return cached result if already fetched
+    if (state.driveImageCache[sku] !== undefined) return state.driveImageCache[sku];
 
+    const folderId = state.driveFolderIndex && state.driveFolderIndex[sku];
+    if (!folderId || !CONFIG.DRIVE_API_KEY) {
+        state.driveImageCache[sku] = [];
+        return [];
+    }
+
+    try {
+        const IMAGE_MIMES = 'image/jpeg,image/png,image/webp,image/gif';
+        const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+        const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType)&pageSize=100&key=${CONFIG.DRIVE_API_KEY}`;
+        const res = await fetch(url);
+        if (!res.ok) { state.driveImageCache[sku] = []; return []; }
+        const { files } = await res.json();
+        const imgs = files
+            .filter(f => IMAGE_MIMES.includes(f.mimeType))
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(f => ({
+                image_url: `https://drive.google.com/uc?export=view&id=${f.id}`,
+                image_title: f.name
+            }));
+        state.driveImageCache[sku] = imgs;
+        return imgs;
+    } catch (err) {
+        console.warn('Drive image fetch failed:', err.message);
+        state.driveImageCache[sku] = [];
+        return [];
+    }
+}
+
+async function loadProductImages(sku) {
+    // 1. Local manifest images
+    const localUrls = (state.localImages && state.localImages[sku]) || [];
+    const localImgs = localUrls.map(url => ({ image_url: url, image_title: url.split('/').pop() }));
+
+    // 2. Google Drive images (live, auto-updates when Drive folder changes)
+    const driveImgs = await fetchDriveImages(sku);
+
+    // 3. Supabase product_images table
     let dbImgs = [];
     if (db) {
         const { data } = await db
@@ -92,7 +127,7 @@ async function loadProductImages(sku) {
         dbImgs = data || [];
     }
 
-    const allImgs = [...localImgs, ...dbImgs];
+    const allImgs = [...driveImgs, ...localImgs, ...dbImgs];
     if (!allImgs.length) return;
 
     const container = $('modal-images');

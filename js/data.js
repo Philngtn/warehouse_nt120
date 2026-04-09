@@ -8,12 +8,31 @@ async function loadImageManifest() {
     } catch (_) {}
 }
 
+// Fetch the list of SKU-named subfolders from Google Drive once at startup.
+// Stores { sku: folderId } in state.driveFolderIndex.
+// Per-SKU image lists are fetched lazily when a product modal opens.
+async function loadDriveFolderIndex() {
+    if (!CONFIG.DRIVE_FOLDER_ID || !CONFIG.DRIVE_API_KEY) return;
+    try {
+        const q = encodeURIComponent(`'${CONFIG.DRIVE_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+        const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1000&key=${CONFIG.DRIVE_API_KEY}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const { files } = await res.json();
+        state.driveFolderIndex = {};
+        files.forEach(f => { state.driveFolderIndex[f.name] = f.id; });
+        console.log(`Drive folder index loaded: ${files.length} SKU folder(s)`);
+    } catch (err) {
+        console.warn('Drive folder index failed:', err.message);
+    }
+}
+
 async function loadInitialData() {
     if (!db) return;
     showLoading();
     try {
         // Inventory must load first so loadDashboardStats can derive counts from cache
-        await Promise.all([loadCategories(), loadManufacturers(), loadInventory(), loadImageManifest()]);
+        await Promise.all([loadCategories(), loadManufacturers(), loadInventory(), loadImageManifest(), loadDriveFolderIndex()]);
         await Promise.all([loadDashboardStats(), loadRecentActivity()]);
     } catch (err) {
         console.error('Error loading data:', err);
