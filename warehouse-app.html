@@ -1012,7 +1012,7 @@
         <!-- RECEIVE SCREEN -->
         <div id="screen-receive" class="screen">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                <button onclick="switchScreen('settings')" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
+                <button onclick="receiveBack()" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                     Back
                 </button>
@@ -1064,7 +1064,7 @@
         <!-- ACTIVITY SCREEN -->
         <div id="screen-activity" class="screen">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                <button onclick="switchScreen('settings')" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
+                <button onclick="receiveBack()" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                     Back
                 </button>
@@ -2146,9 +2146,18 @@ async function saveCompatibility() {
 // ============================================================
 function goReceive(sku) {
     closeModal('product-modal');
+    state.receiveFromSku = sku || null;
     $('receive-search').value = sku;
     switchScreen('receive');
     lookupForReceive(sku);
+}
+
+function receiveBack() {
+    if (state.receiveFromSku) {
+        openProductDetail(state.receiveFromSku);
+    } else {
+        switchScreen('scan');
+    }
 }
 
 async function lookupForReceive(query) {
