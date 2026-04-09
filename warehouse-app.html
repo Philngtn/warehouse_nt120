@@ -1861,15 +1861,15 @@ async function lookupProduct(query) {
     const inv = state.inventory || [];
 
     // 1. Exact SKU (case-insensitive)
-    let match = inv.find(p => p.is_active !== false && p.sku && p.sku.toLowerCase() === q);
+    let match = inv.find(p => p.sku && p.sku.toLowerCase() === q);
     if (match) return match;
 
     // 2. Exact manufacturer code (case-insensitive)
-    match = inv.find(p => p.is_active !== false && p.manufacturer_code && p.manufacturer_code.toLowerCase() === q);
+    match = inv.find(p => p.manufacturer_code && p.manufacturer_code.toLowerCase() === q);
     if (match) return match;
 
     // 3. Name contains
-    const nameMatches = inv.filter(p => p.is_active !== false && p.name && p.name.toLowerCase().includes(q));
+    const nameMatches = inv.filter(p => p.name && p.name.toLowerCase().includes(q));
     if (nameMatches.length === 1) return nameMatches[0];
     if (nameMatches.length > 1) {
         $('search-input').value = query.trim();
