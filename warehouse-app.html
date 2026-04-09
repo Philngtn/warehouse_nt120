@@ -1858,21 +1858,21 @@ async function lookupProduct(query) {
     query = query.trim();
     const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
 
-    // Try exact SKU match
+    // Try exact SKU match (case-insensitive)
     let { data } = await db
         .from(viewName)
         .select('*')
-        .eq('sku', query)
+        .ilike('sku', query)
         .eq('is_active', true)
         .limit(1);
 
     if (data && data.length) return data[0];
 
-    // Try manufacturer code
+    // Try manufacturer code (case-insensitive)
     ({ data } = await db
         .from(viewName)
         .select('*')
-        .eq('manufacturer_code', query)
+        .ilike('manufacturer_code', query)
         .eq('is_active', true)
         .limit(1));
 
@@ -2773,8 +2773,8 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
         if (!result || scanCooldown) return;
         scanCooldown = true;
 
-        const code = result.getText();
-        statusEl.textContent = `Found: ${code}`;
+        const code = result.getText().trim();
+        statusEl.textContent = `Scanned: "${code}" — looking up...`;
         showLoading();
         const product = await lookupProduct(code);
         hideLoading();
@@ -2782,7 +2782,7 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
             showScannedProduct(product);
             // Keep cooldown on until user dismisses / navigates away
         } else {
-            showToast(`No product found for: ${code}`, 'error', 'scan-not-found');
+            showToast(`No product found for: "${code}"`, 'error', 'scan-not-found');
             $('manual-sku-input').value = code;
             statusEl.textContent = hasBackCam ? 'Scanning... Point at barcode' : 'Scanning... Hold barcode up to webcam';
             // Resume scanning after 2.5s
