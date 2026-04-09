@@ -2877,8 +2877,8 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
 
     const constraints = {
         video: hasBackCam
-            ? { facingMode: { ideal: 'environment' }, ...resolution }
-            : { deviceId: { ideal: deviceId }, ...resolution }
+            ? { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+            : { deviceId: { ideal: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
     };
 
     let scanCooldown = false;
