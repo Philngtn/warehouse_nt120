@@ -1280,6 +1280,10 @@
                         <strong>Preview (first 5 rows):</strong>
                         <div id="preview-content" style="background:var(--bg-secondary);padding:10px;border-radius:var(--radius-sm);margin-top:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:11px;"></div>
                     </div>
+                    <label id="wipe-replace-row" style="display:none;align-items:flex-start;gap:10px;margin-bottom:12px;padding:10px;background:rgba(220,38,38,0.1);border:1px solid var(--danger);border-radius:var(--radius-sm);cursor:pointer;">
+                        <input type="checkbox" id="wipe-replace-chk" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;cursor:pointer;">
+                        <span style="font-size:12px;line-height:1.4;"><strong style="color:var(--danger);">Wipe &amp; Replace</strong> — permanently delete ALL existing products before importing. Use when your sheet is the complete new inventory. A backup will be downloaded first.</span>
+                    </label>
                     <button type="button" id="import-btn" class="btn btn-primary btn-block" style="cursor:pointer;display:none;">⬆️ Upload to Database</button>
                     <div id="import-msg" style="margin-top:10px;font-size:12px;text-align:center;display:none;"></div>
                     <div id="import-errors" style="margin-top:10px;font-size:11px;color:var(--danger);display:none;background:var(--bg-secondary);padding:8px;border-radius:var(--radius-sm);max-height:150px;overflow-y:auto;"></div>
@@ -2549,23 +2553,33 @@ async function importFromExcel() {
         const mfgMap = new Map(manufacturers?.map(m => [m.name?.toLowerCase(), m.id]) || []);
         const catMap = new Map(categories?.map(c => [c.name?.toLowerCase(), c.id]) || []);
 
-        // Deactivate all current inventory — Excel file is the new source of truth
-        // (soft delete: is_active = false, consistent with app policy of never hard-deleting)
+        const wipeMode = $('wipe-replace-chk').checked;
+
+        // Pre-load all existing SKUs before clearing (needed for txn log)
+        const { data: existingRows } = await db.from('inventory').select('sku, qty');
+        const existingMap = new Map((existingRows || []).map(r => [r.sku, r.qty]));
+
         btn.innerHTML = '<span class="spinner"></span> Clearing old data...';
-        const { error: clearErr } = await db
-            .from('inventory')
-            .update({ is_active: false })
-            .neq('id', '00000000-0000-0000-0000-000000000000'); // match all rows
-        if (clearErr) throw new Error(`Failed to clear inventory: ${clearErr.message}`);
+        if (wipeMode) {
+            // Hard delete: permanently remove all existing inventory rows
+            const { error: clearErr } = await db
+                .from('inventory')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // match all rows
+            if (clearErr) throw new Error(`Failed to wipe inventory: ${clearErr.message}`);
+        } else {
+            // Soft delete: deactivate all — Excel file is the new source of truth
+            const { error: clearErr } = await db
+                .from('inventory')
+                .update({ is_active: false })
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // match all rows
+            if (clearErr) throw new Error(`Failed to clear inventory: ${clearErr.message}`);
+        }
 
         btn.innerHTML = '<span class="spinner"></span> Uploading...';
         const errors = [];
         let imported = 0, updated = 0;
         const txnBatch = []; // Collect transactions; bulk-insert at end
-
-        // Pre-load all existing SKUs in one query (avoids N per-row SELECTs)
-        const { data: existingRows } = await db.from('inventory').select('sku, qty');
-        const existingMap = new Map((existingRows || []).map(r => [r.sku, r.qty]));
 
         // Process each row
         for (let i = 0; i < rows.length; i++) {
@@ -2655,7 +2669,9 @@ async function importFromExcel() {
             errorsEl.style.display = 'block';
         }
 
-        msgEl.innerHTML = `✓ Imported: ${imported} | Updated: ${updated} | Total: ${totalProcessed}`;
+        msgEl.innerHTML = wipeMode
+            ? `✓ Wiped &amp; Imported: ${totalProcessed} products (old data permanently deleted)`
+            : `✓ Imported: ${imported} | Updated: ${updated} | Total: ${totalProcessed}`;
         msgEl.style.color = 'var(--success)';
         msgEl.style.display = 'block';
 
@@ -2962,6 +2978,8 @@ document.addEventListener('DOMContentLoaded', () => {
         $('excel-modal').classList.add('active');
         $('import-file').value = '';
         $('import-preview').style.display = 'none';
+        $('wipe-replace-row').style.display = 'none';
+        $('wipe-replace-chk').checked = false;
         $('import-btn').style.display = 'none';
         $('import-msg').style.display = 'none';
         $('import-errors').style.display = 'none';
@@ -2991,6 +3009,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = $('import-file').files[0];
         const msgEl = $('import-msg');
         $('import-preview').style.display = 'none';
+        $('wipe-replace-row').style.display = 'none';
+        $('wipe-replace-chk').checked = false;
         $('import-btn').style.display = 'none';
         msgEl.style.display = 'none';
         if (!file) return;
@@ -3020,6 +3040,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     $('preview-content').innerHTML = previewHtml;
                     $('import-preview').style.display = 'block';
+                    $('wipe-replace-row').style.display = 'flex';
                     $('import-btn').style.display = 'block';
                 }
             } catch (err) {
