@@ -442,26 +442,28 @@
         .detail-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin: 12px 0;
+            column-gap: 12px;
+            row-gap: 16px;
+            margin: 16px 0;
         }
         .detail-field {
             min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
         .detail-field label {
-            font-size: 10px;
+            font-size: 11px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            display: block;
+            line-height: 1;
         }
         .detail-field .field-value {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            margin-top: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            line-height: 1.3;
+            word-break: break-word;
         }
         .detail-actions {
             display: flex;
