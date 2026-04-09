@@ -2659,6 +2659,15 @@ async function importFromExcel() {
 // ============================================================
 // BARCODE SCANNER
 // ============================================================
+
+// List video devices using native browser API (no ZXing dependency)
+async function listVideoDevices() {
+    // Request a stream first so browser reveals device labels
+    try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) { /* will surface below */ }
+    const all = await navigator.mediaDevices.enumerateDevices();
+    return all.filter(d => d.kind === 'videoinput');
+}
+
 async function startScanner() {
     if (state.scannerActive) return;
 
@@ -2671,26 +2680,22 @@ async function startScanner() {
             return;
         }
 
-        // Must be a secure context (HTTPS or localhost)
         if (!window.isSecureContext) {
-            statusEl.innerHTML = 'Camera requires HTTPS. Open via Vercel, not file://';
+            statusEl.textContent = 'Camera requires HTTPS. Open via Vercel, not file://';
             return;
         }
 
-        // Pre-check camera permission
+        // Pre-check permission state without triggering a prompt
         if (navigator.permissions) {
             const perm = await navigator.permissions.query({ name: 'camera' });
             if (perm.state === 'denied') {
-                statusEl.innerHTML = 'Camera blocked. Click the 🔒 icon in the address bar to allow camera, then retry.';
+                statusEl.textContent = 'Camera blocked — click the lock icon in the address bar to allow, then retry.';
                 $('scanner-retry-btn').style.display = 'inline-flex';
                 return;
             }
         }
 
-        state.codeReader = new ZXing.BrowserMultiFormatReader();
-        const videoEl = $('scanner-video');
-
-        const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+        const devices = await listVideoDevices();
 
         if (devices.length === 0) {
             statusEl.textContent = 'No camera found. Use manual input.';
@@ -2715,23 +2720,24 @@ async function startScanner() {
 
         if (devices.length > 1) selectRow.classList.add('visible');
 
-        await startDecoding(deviceId, videoEl, statusEl);
+        state.codeReader = new ZXing.BrowserMultiFormatReader();
+        await startDecoding(deviceId, $('scanner-video'), statusEl, !!backCam);
 
     } catch (err) {
         console.error('Scanner error:', err);
         const msg = err.name === 'NotAllowedError'
-            ? 'Camera blocked — click the 🔒 icon in the address bar to allow, then retry.'
+            ? 'Camera blocked — click the lock icon in the address bar to allow, then retry.'
             : err.name === 'NotFoundError'
             ? 'No camera found. Use manual input.'
             : err.name === 'NotReadableError'
-            ? 'Camera is in use by another app. Close it and retry.'
+            ? 'Camera in use by another app. Close it and retry.'
             : `Camera error: ${err.message}`;
         $('scanner-status').textContent = msg;
         $('scanner-retry-btn').style.display = 'inline-flex';
     }
 }
 
-async function startDecoding(deviceId, videoEl, statusEl) {
+async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     if (!statusEl) statusEl = $('scanner-status');
     if (!videoEl) videoEl = $('scanner-video');
 
@@ -2752,9 +2758,6 @@ async function startDecoding(deviceId, videoEl, statusEl) {
     });
 
     state.scannerActive = true;
-    // Detect if likely a laptop (no back camera found among devices)
-    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-    const hasBackCam = devices.some(d => /back|rear|environment/i.test(d.label));
     statusEl.textContent = hasBackCam ? 'Scanning... Point at barcode' : 'Scanning... Hold barcode up to webcam';
 }
 
@@ -2763,8 +2766,10 @@ async function switchCamera(deviceId) {
         state.codeReader.reset();
         state.scannerActive = false;
     }
+    const devices = await listVideoDevices();
+    const hasBackCam = devices.some(d => /back|rear|environment/i.test(d.label));
     state.codeReader = new ZXing.BrowserMultiFormatReader();
-    await startDecoding(deviceId);
+    await startDecoding(deviceId, null, null, hasBackCam);
 }
 
 function stopScanner() {
