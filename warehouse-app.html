@@ -383,6 +383,17 @@
             overflow: hidden;
             margin-bottom: 8px;
         }
+        @media (min-width: 768px) {
+            .scanner-container {
+                aspect-ratio: unset;
+                height: calc(100vh - 220px);
+                min-height: 480px;
+            }
+            .scanner-crosshair {
+                width: 420px;
+                height: 260px;
+            }
+        }
         .camera-select-row {
             display: none;
             align-items: center;
