@@ -28,10 +28,10 @@ async function loadSalesHistory(reset = false) {
     }
 
     if (dateFilter) {
-        // dateFilter is "YYYY-MM-DD" — build range without timezone shift
+        // dateFilter is "YYYY-MM-DD" — convert to UTC+7 (Vietnam) range
         query = query
-            .gte('created_at', `${dateFilter}T00:00:00.000`)
-            .lte('created_at', `${dateFilter}T23:59:59.999`);
+            .gte('created_at', `${dateFilter}T00:00:00.000+07:00`)
+            .lte('created_at', `${dateFilter}T23:59:59.999+07:00`);
     }
 
     const { data, error } = await query;
