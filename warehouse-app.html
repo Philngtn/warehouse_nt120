@@ -1975,7 +1975,7 @@ async function openProductDetail(sku) {
     // Actions
     html += `<div class="detail-actions">`;
     html += `<button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>`;
-    html += `<button class="btn btn-primary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>`;
+    html += `<button class="btn btn-secondary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>`;
     if (isAdmin) {
         html += `<button class="btn btn-secondary btn-sm" onclick="showAdjustModal('${escapeHtml(product.sku)}')">Adjust</button>`;
     }
@@ -2894,9 +2894,9 @@ function showScannedProduct(product) {
         </div>
         ${product.image_url ? `<div style="margin:12px 0;"><img src="${escapeHtml(product.image_url)}" style="width:100%;border-radius:var(--radius-sm);max-height:160px;object-fit:contain;background:var(--bg-input);" loading="lazy"></div>` : ''}
         <div class="detail-actions">
-            <button class="btn btn-primary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>
+            <button class="btn btn-primary btn-sm" onclick="openProductDetail('${escapeHtml(product.sku)}')">Details</button>
             <button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>
-            <button class="btn btn-secondary btn-sm" onclick="openProductDetail('${escapeHtml(product.sku)}')">Details</button>
+            <button class="btn btn-secondary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>
         </div>
     `;
 }
