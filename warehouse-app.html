@@ -37,6 +37,7 @@
             --danger-hover: #c0392b;
             --warning: #f39c12;
             --info: #3498db;
+            --success: #27ae60;
             --border: #2a2a4a;
             --radius: 12px;
             --radius-sm: 8px;
@@ -896,7 +897,7 @@
     <!-- ============================================================
          MAIN APP (hidden until auth)
          ============================================================ -->
-    <div id="main-app" style="display:none;flex:1;display:none;flex-direction:column;height:100%;">
+    <div id="main-app" style="display:none;flex-direction:column;height:100%;">
 
         <!-- TOP BAR -->
         <div class="top-bar">
@@ -1066,7 +1067,7 @@
         <!-- ACTIVITY SCREEN -->
         <div id="screen-activity" class="screen">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                <button onclick="receiveBack()" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
+                <button onclick="switchScreen('settings')" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;font-size:14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                     Back
                 </button>
@@ -1570,13 +1571,9 @@ async function loadInitialData() {
     if (!db) return;
     showLoading();
     try {
-        await Promise.all([
-            loadCategories(),
-            loadManufacturers(),
-            loadInventory(),
-            loadDashboardStats(),
-            loadRecentActivity(),
-        ]);
+        // Inventory must load first so loadDashboardStats can derive counts from cache
+        await Promise.all([loadCategories(), loadManufacturers(), loadInventory()]);
+        await Promise.all([loadDashboardStats(), loadRecentActivity()]);
     } catch (err) {
         console.error('Error loading data:', err);
         showToast('Error loading data', 'error');
@@ -1617,18 +1614,14 @@ async function loadInventory() {
 }
 
 async function loadDashboardStats() {
-    const { count: totalSkus } = await db
-        .from('inventory')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
+    // Derive counts from local cache (already loaded by loadInventory)
+    const active = state.inventory.filter(p => p.is_active !== false);
+    const totalSkus = active.length;
+    // Use each product's own reorder_level (not a hardcoded 5)
+    const lowStock = active.filter(p => p.qty <= (p.reorder_level || 5)).length;
+    const totalItems = active.reduce((sum, p) => sum + (p.qty || 0), 0);
 
-    const { count: lowStock } = await db
-        .from('inventory')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .lte('qty', 5); // using 5 as default reorder level for count
-
-    // Today's transactions
+    // Only today's transaction count requires a DB query
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const { count: todayTxns } = await db
@@ -1636,15 +1629,8 @@ async function loadDashboardStats() {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today.toISOString());
 
-    // Total items in stock
-    const { data: sumData } = await db
-        .from('inventory')
-        .select('qty')
-        .eq('is_active', true);
-    const totalItems = (sumData || []).reduce((sum, item) => sum + (item.qty || 0), 0);
-
-    $('stat-total-skus').textContent = totalSkus || 0;
-    $('stat-low-stock').textContent = lowStock || 0;
+    $('stat-total-skus').textContent = totalSkus;
+    $('stat-low-stock').textContent = lowStock;
     $('stat-today-txns').textContent = todayTxns || 0;
     $('stat-total-value').textContent = totalItems.toLocaleString();
 }
@@ -1704,35 +1690,22 @@ async function loadActivity(reset = false) {
 
 
 function populateCategoryFilter() {
-    const sel = $('filter-category');
-    sel.innerHTML = '<option value="">All Categories</option>';
-    state.categories.forEach(cat => {
-        sel.innerHTML += `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`;
-    });
+    const opts = ['<option value="">All Categories</option>'];
+    state.categories.forEach(cat => opts.push(`<option value="${cat.id}">${escapeHtml(cat.name)}</option>`));
+    $('filter-category').innerHTML = opts.join('');
 }
 
 function populateManufacturerFilter() {
-    const sel = $('filter-manufacturer');
-    sel.innerHTML = '<option value="">All Manufacturers</option>';
-    state.manufacturers.forEach(m => {
-        sel.innerHTML += `<option value="${m.id}">${escapeHtml(m.name)}</option>`;
-    });
-
-    // Also populate receive manufacturer dropdown
-    const recSel = $('receive-manufacturer-select');
-    recSel.innerHTML = '<option value="">No change</option>';
-    state.manufacturers.forEach(m => {
-        recSel.innerHTML += `<option value="${m.id}">${escapeHtml(m.name)}</option>`;
-    });
+    const opts = state.manufacturers.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`);
+    $('filter-manufacturer').innerHTML = '<option value="">All Manufacturers</option>' + opts.join('');
+    $('receive-manufacturer-select').innerHTML = '<option value="">No change</option>' + opts.join('');
 }
 
 function populateYearFilter() {
-    const sel = $('filter-year');
     const currentYear = new Date().getFullYear();
-    sel.innerHTML = '<option value="">All Years</option>';
-    for (let y = currentYear; y >= 1990; y--) {
-        sel.innerHTML += `<option value="${y}">${y}</option>`;
-    }
+    const opts = ['<option value="">All Years</option>'];
+    for (let y = currentYear; y >= 1990; y--) opts.push(`<option value="${y}">${y}</option>`);
+    $('filter-year').innerHTML = opts.join('');
 }
 
 function renderProductItem(product) {
@@ -1907,6 +1880,70 @@ async function lookupProduct(query) {
 }
 
 // ============================================================
+// SHARED PRODUCT DETAIL HELPERS
+// ============================================================
+function renderDetailHeader(product) {
+    return `
+        <div class="detail-header">
+            <div style="flex:1;min-width:0;">
+                <div class="detail-sku">${escapeHtml(product.sku)}</div>
+                <div class="detail-name">${escapeHtml(product.name)}</div>
+                <div class="detail-manufacturer">${escapeHtml(product.manufacturer_name || 'Unknown manufacturer')}</div>
+            </div>
+            <div class="product-qty">
+                <div class="qty-num ${qtyClass(product.qty, product.reorder_level)}">${product.qty}</div>
+                <div class="qty-label">in stock</div>
+            </div>
+        </div>`;
+}
+
+function renderDetailGrid(product) {
+    const isAdmin = state.userRole === 'admin';
+    const yearRange = (product.model_year_start || product.model_year_end)
+        ? `${product.model_year_start || '?'} - ${product.model_year_end || '?'}`
+        : 'N/A';
+    return `
+        <div class="detail-grid">
+            <div class="detail-row">
+                <div class="detail-field">
+                    <label>Category</label>
+                    <div class="field-value">${product.category_icon || ''} ${escapeHtml(product.category_name || 'N/A')}</div>
+                </div>
+                <div class="detail-field">
+                    <label>Location</label>
+                    <div class="field-value">${escapeHtml(product.location || 'N/A')}</div>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-field">
+                    <label>Selling Price</label>
+                    <div class="field-value">${formatCurrency(product.selling_price)}</div>
+                </div>
+                ${isAdmin ? `
+                <div class="detail-field buying-price-field" data-price="${formatCurrency(product.cost)}" onclick="toggleBuyingPrice(this)">
+                    <label>Buying Price</label>
+                    <div class="price-masked" data-visible="0">••••••</div>
+                    <div class="price-reveal">Tap to reveal</div>
+                </div>` : `
+                <div class="detail-field">
+                    <label>Reorder Level</label>
+                    <div class="field-value">${product.reorder_level || 'N/A'}</div>
+                </div>`}
+            </div>
+            <div class="detail-row">
+                <div class="detail-field">
+                    <label>Model Years</label>
+                    <div class="field-value">${yearRange}</div>
+                </div>
+                <div class="detail-field">
+                    <label>Mfr Code</label>
+                    <div class="field-value">${escapeHtml(product.manufacturer_code || 'N/A')}</div>
+                </div>
+            </div>
+        </div>`;
+}
+
+// ============================================================
 // PRODUCT DETAIL MODAL
 // ============================================================
 async function openProductDetail(sku) {
@@ -1914,93 +1951,27 @@ async function openProductDetail(sku) {
     if (!product) return;
 
     state.selectedProduct = product;
-
     const isAdmin = state.userRole === 'admin';
-    const yearRange = (product.model_year_start || product.model_year_end)
-        ? `${product.model_year_start || '?'} - ${product.model_year_end || '?'}`
-        : 'N/A';
 
-    let html = `
-        <div class="detail-card">
-            <div class="detail-header">
-                <div style="flex:1;min-width:0;">
-                    <div class="detail-sku">${escapeHtml(product.sku)}</div>
-                    <div class="detail-name">${escapeHtml(product.name)}</div>
-                    <div class="detail-manufacturer">${escapeHtml(product.manufacturer_name || 'Unknown manufacturer')}</div>
-                </div>
-                <div class="product-qty">
-                    <div class="qty-num ${qtyClass(product.qty, product.reorder_level)}">${product.qty}</div>
-                    <div class="qty-label">in stock</div>
-                </div>
-            </div>
+    let html = `<div class="detail-card">
+        ${renderDetailHeader(product)}
+        ${renderDetailGrid(product)}
+        ${product.description ? `<p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">${escapeHtml(product.description)}</p>` : ''}
+        ${product.is_discontinued ? '<p style="color:var(--danger);font-size:13px;font-weight:600;">⚠ This product is discontinued</p>' : ''}`;
 
-            <div class="detail-grid">
-                <div class="detail-row">
-                    <div class="detail-field">
-                        <label>Category</label>
-                        <div class="field-value">${product.category_icon || ''} ${escapeHtml(product.category_name || 'N/A')}</div>
-                    </div>
-                    <div class="detail-field">
-                        <label>Location</label>
-                        <div class="field-value">${escapeHtml(product.location || 'N/A')}</div>
-                    </div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-field">
-                        <label>Selling Price</label>
-                        <div class="field-value">${formatCurrency(product.selling_price)}</div>
-                    </div>
-                    ${isAdmin ? `
-                    <div class="detail-field buying-price-field" data-price="${formatCurrency(product.cost)}" onclick="toggleBuyingPrice(this)">
-                        <label>Buying Price</label>
-                        <div class="price-masked" data-visible="0">••••••</div>
-                        <div class="price-reveal">Tap to reveal</div>
-                    </div>` : `
-                    <div class="detail-field">
-                        <label>Reorder Level</label>
-                        <div class="field-value">${product.reorder_level || 'N/A'}</div>
-                    </div>`}
-                </div>
-                <div class="detail-row">
-                    <div class="detail-field">
-                        <label>Model Years</label>
-                        <div class="field-value">${yearRange}</div>
-                    </div>
-                    <div class="detail-field">
-                        <label>Mfr Code</label>
-                        <div class="field-value">${escapeHtml(product.manufacturer_code || 'N/A')}</div>
-                    </div>
-                </div>
-            </div>
-
-            ${product.description ? `<p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">${escapeHtml(product.description)}</p>` : ''}
-
-            ${product.is_discontinued ? '<p style="color:var(--danger);font-size:13px;font-weight:600;">⚠ This product is discontinued</p>' : ''}
-    `;
-
-    // Image
     if (product.image_url) {
         html += `<div style="margin:12px 0;"><img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name)}" style="width:100%;border-radius:var(--radius-sm);max-height:200px;object-fit:contain;background:var(--bg-input);" loading="lazy"></div>`;
     }
 
-    // Actions
-    html += `<div class="detail-actions">`;
-    html += `<button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>`;
-    html += `<button class="btn btn-secondary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>`;
-    if (isAdmin) {
-        html += `<button class="btn btn-secondary btn-sm" onclick="showAdjustModal('${escapeHtml(product.sku)}')">Adjust</button>`;
-    }
-    html += `</div>`;
-
-    // Product images gallery
-    html += `<div id="modal-images"></div>`;
-
-    html += `</div>`;
+    html += `<div class="detail-actions">
+        <button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>
+        <button class="btn btn-secondary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>
+        ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="showAdjustModal('${escapeHtml(product.sku)}')">Adjust</button>` : ''}
+    </div>
+    <div id="modal-images"></div></div>`;
 
     $('modal-content').innerHTML = html;
     $('product-modal').classList.add('active');
-
-    // Load product images
     loadProductImages(product.sku);
 }
 
@@ -2425,22 +2396,14 @@ async function handleAdjust(e) {
 // ============================================================
 // EXCEL IMPORT/EXPORT
 // ============================================================
+function _pad(n) { return String(n).padStart(2, '0'); }
 function getDateStamp() {
     const d = new Date();
-    const DD = String(d.getDate()).padStart(2, '0');
-    const MM = String(d.getMonth() + 1).padStart(2, '0');
-    const YYYY = d.getFullYear();
-    return `${DD}_${MM}_${YYYY}`;
+    return `${_pad(d.getDate())}_${_pad(d.getMonth() + 1)}_${d.getFullYear()}`;
 }
-
 function getDateTimeStamp() {
     const d = new Date();
-    const DD = String(d.getDate()).padStart(2, '0');
-    const MM = String(d.getMonth() + 1).padStart(2, '0');
-    const YYYY = d.getFullYear();
-    const HH = String(d.getHours()).padStart(2, '0');
-    const MIN = String(d.getMinutes()).padStart(2, '0');
-    return `${DD}_${MM}_${YYYY}_${HH}_${MIN}`;
+    return `${getDateStamp()}_${_pad(d.getHours())}_${_pad(d.getMinutes())}`;
 }
 
 // Build workbook rows from product array (shared by export and backup)
@@ -2598,6 +2561,11 @@ async function importFromExcel() {
         btn.innerHTML = '<span class="spinner"></span> Uploading...';
         const errors = [];
         let imported = 0, updated = 0;
+        const txnBatch = []; // Collect transactions; bulk-insert at end
+
+        // Pre-load all existing SKUs in one query (avoids N per-row SELECTs)
+        const { data: existingRows } = await db.from('inventory').select('sku, qty');
+        const existingMap = new Map((existingRows || []).map(r => [r.sku, r.qty]));
 
         // Process each row
         for (let i = 0; i < rows.length; i++) {
@@ -2609,14 +2577,8 @@ async function importFromExcel() {
                 const sku = String(row['SKU'] || '').trim();
                 const name = String(row['Name'] || '').trim();
 
-                if (!sku) {
-                    errors.push(`Row ${rowNum}: SKU is required`);
-                    continue;
-                }
-                if (!name) {
-                    errors.push(`Row ${rowNum}: Name is required`);
-                    continue;
-                }
+                if (!sku) { errors.push(`Row ${rowNum}: SKU is required`); continue; }
+                if (!name) { errors.push(`Row ${rowNum}: Name is required`); continue; }
 
                 // Look up or create manufacturer
                 let manufacturerId = null;
@@ -2626,34 +2588,20 @@ async function importFromExcel() {
                     if (mfgMap.has(mfgKey)) {
                         manufacturerId = mfgMap.get(mfgKey);
                     } else {
-                        // Create new manufacturer
                         const { data: newMfg, error: mfgErr } = await db
-                            .from('manufacturers')
-                            .insert({ name: mfgName })
-                            .select();
-                        if (mfgErr) {
-                            errors.push(`Row ${rowNum}: Failed to create manufacturer "${mfgName}"`);
-                            continue;
-                        }
-                        if (newMfg?.length) {
-                            manufacturerId = newMfg[0].id;
-                            mfgMap.set(mfgKey, manufacturerId);
-                        }
+                            .from('manufacturers').insert({ name: mfgName }).select();
+                        if (mfgErr) { errors.push(`Row ${rowNum}: Failed to create manufacturer "${mfgName}"`); continue; }
+                        if (newMfg?.length) { manufacturerId = newMfg[0].id; mfgMap.set(mfgKey, manufacturerId); }
                     }
                 }
 
                 // Look up category
-                let categoryId = null;
                 const catName = String(row['Category'] || '').trim();
-                if (catName) {
-                    const catKey = catName.toLowerCase();
-                    categoryId = catMap.get(catKey) || null;
-                }
+                const categoryId = catName ? (catMap.get(catName.toLowerCase()) || null) : null;
 
-                // Build inventory row
                 const inventoryRow = {
-                    sku: sku,
-                    name: name,
+                    sku,
+                    name,
                     manufacturer_id: manufacturerId,
                     manufacturer_code: String(row['Manufacturer Code'] || '').trim() || null,
                     category_id: categoryId,
@@ -2670,60 +2618,34 @@ async function importFromExcel() {
                     is_active: true
                 };
 
-                // Check if product exists
-                const { data: existing } = await db
-                    .from('inventory')
-                    .select('id, qty')
-                    .eq('sku', sku)
-                    .single();
-
-                // Upsert
                 const { error: upsertErr } = await db
-                    .from('inventory')
-                    .upsert(inventoryRow, { onConflict: 'sku' });
+                    .from('inventory').upsert(inventoryRow, { onConflict: 'sku' });
+                if (upsertErr) { errors.push(`Row ${rowNum} (${sku}): ${upsertErr.message}`); continue; }
 
-                if (upsertErr) {
-                    errors.push(`Row ${rowNum} (${sku}): ${upsertErr.message}`);
-                    continue;
-                }
-
-                // Log transaction
-                if (existing) {
+                // Queue transaction log entry (bulk-inserted after the loop)
+                if (existingMap.has(sku)) {
                     updated++;
-                    if (inventoryRow.qty !== existing.qty) {
-                        const { error: txnErr } = await db
-                            .from('transactions')
-                            .insert({
-                                type: 'updated',
-                                sku: sku,
-                                quantity_change: inventoryRow.qty - existing.qty,
-                                qty_before: existing.qty,
-                                qty_after: inventoryRow.qty,
-                                user_email: state.user.email,
-                                user_action: 'excel_import',
-                                reason: 'Excel import'
-                            });
-                        if (txnErr) console.warn('Transaction log failed:', txnErr);
+                    const prevQty = existingMap.get(sku);
+                    if (inventoryRow.qty !== prevQty) {
+                        txnBatch.push({ type: 'updated', sku, quantity_change: inventoryRow.qty - prevQty,
+                            qty_before: prevQty, qty_after: inventoryRow.qty,
+                            user_email: state.user.email, user_action: 'excel_import', reason: 'Excel import' });
                     }
                 } else {
                     imported++;
-                    const { error: txnErr } = await db
-                        .from('transactions')
-                        .insert({
-                            type: 'created',
-                            sku: sku,
-                            quantity_change: inventoryRow.qty || 0,
-                            qty_before: 0,
-                            qty_after: inventoryRow.qty || 0,
-                            user_email: state.user.email,
-                            user_action: 'excel_import',
-                            reason: 'Excel import'
-                        });
-                    if (txnErr) console.warn('Transaction log failed:', txnErr);
+                    txnBatch.push({ type: 'created', sku, quantity_change: inventoryRow.qty,
+                        qty_before: 0, qty_after: inventoryRow.qty,
+                        user_email: state.user.email, user_action: 'excel_import', reason: 'Excel import' });
                 }
             } catch (err) {
                 errors.push(`Row ${rowNum}: ${err.message}`);
             }
+        }
+
+        // Bulk-insert all transaction logs in one round-trip
+        if (txnBatch.length) {
+            const { error: txnErr } = await db.from('transactions').insert(txnBatch);
+            if (txnErr) console.warn('Transaction batch log failed:', txnErr);
         }
 
         // Show results
@@ -2926,54 +2848,12 @@ function showScannedProduct(product) {
     $('scan-result').style.display = '';
 
     const isAdmin = state.userRole === 'admin';
-    const yearRange = (product.model_year_start || product.model_year_end)
-        ? `${product.model_year_start || '?'} - ${product.model_year_end || '?'}`
-        : 'N/A';
-
     $('scan-detail-card').innerHTML = `
         <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
             <button onclick="clearScanResult()" style="background:none;border:none;color:var(--text-muted);font-size:22px;line-height:1;cursor:pointer;padding:0 2px;" title="Clear result">×</button>
         </div>
-        <div class="detail-header">
-            <div>
-                <div class="detail-sku">${escapeHtml(product.sku)}</div>
-                <div class="detail-name">${escapeHtml(product.name)}</div>
-                <div class="detail-manufacturer">${escapeHtml(product.manufacturer_name || 'Unknown')}</div>
-            </div>
-            <div class="product-qty">
-                <div class="qty-num ${qtyClass(product.qty, product.reorder_level)}">${product.qty}</div>
-                <div class="qty-label">in stock</div>
-            </div>
-        </div>
-        <div class="detail-grid">
-            <div class="detail-row">
-                <div class="detail-field">
-                    <label>Category</label>
-                    <div class="field-value">${product.category_icon || ''} ${escapeHtml(product.category_name || 'N/A')}</div>
-                </div>
-                <div class="detail-field">
-                    <label>Location</label>
-                    <div class="field-value">${escapeHtml(product.location || 'N/A')}</div>
-                </div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-field">
-                    <label>Selling Price</label>
-                    <div class="field-value">${formatCurrency(product.selling_price)}</div>
-                </div>
-                ${isAdmin ? `<div class="detail-field buying-price-field" data-price="${formatCurrency(product.cost)}" onclick="toggleBuyingPrice(this)"><label>Buying Price</label><div class="price-masked" data-visible="0">••••••</div><div class="price-reveal">Tap to reveal</div></div>` : '<div class="detail-field"></div>'}
-            </div>
-            <div class="detail-row">
-                <div class="detail-field">
-                    <label>Model Years</label>
-                    <div class="field-value">${yearRange}</div>
-                </div>
-                <div class="detail-field">
-                    <label>Mfr Code</label>
-                    <div class="field-value">${escapeHtml(product.manufacturer_code || 'N/A')}</div>
-                </div>
-            </div>
-        </div>
+        ${renderDetailHeader(product)}
+        ${renderDetailGrid(product)}
         ${product.image_url ? `<div style="margin:12px 0;"><img src="${escapeHtml(product.image_url)}" style="width:100%;border-radius:var(--radius-sm);max-height:160px;object-fit:contain;background:var(--bg-input);" loading="lazy"></div>` : ''}
         <div class="detail-actions">
             <button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>
@@ -3007,23 +2887,23 @@ function setupRealtime() {
 }
 
 function handleInventoryChange(payload) {
-    const { eventType, new: newRow, old: oldRow } = payload;
+    const { eventType, new: newRow } = payload;
 
     if (eventType === 'UPDATE' && newRow) {
-        const idx = state.inventory.findIndex(p => p.id === newRow.id);
-        if (idx >= 0) {
-            // Preserve joined fields (from view) and update raw fields
-            Object.assign(state.inventory[idx], newRow);
-        }
-        // Refresh stats
+        // Reload the single row from the view to preserve joined columns
+        // (manufacturer_name, category_name etc. are absent in raw table payloads)
+        const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
+        db.from(viewName).select('*').eq('id', newRow.id).single().then(({ data }) => {
+            if (!data) return;
+            const idx = state.inventory.findIndex(p => p.id === newRow.id);
+            if (idx >= 0) state.inventory[idx] = data;
+            else state.inventory.push(data);
+            if (state.selectedProduct && state.selectedProduct.id === newRow.id) {
+                state.selectedProduct = data;
+            }
+        });
         loadDashboardStats();
-
-        // If currently viewing this product, update the display
-        if (state.selectedProduct && state.selectedProduct.id === newRow.id) {
-            state.selectedProduct.qty = newRow.qty;
-        }
     } else if (eventType === 'INSERT' && newRow) {
-        // Reload inventory to get view data
         loadInventory();
         loadDashboardStats();
     }
