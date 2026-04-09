@@ -544,10 +544,14 @@ label {
 }
 .detail-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-top: 16px;
 }
-.detail-actions .btn { flex: 1; }
+.detail-actions .btn {
+    flex: 1 1 calc(50% - 4px);
+    white-space: nowrap;
+}
 
 /* ============================================================
    ACTIVITY LOG
