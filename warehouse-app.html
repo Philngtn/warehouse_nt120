@@ -582,6 +582,18 @@
 <script src="js/receive.js"></script>
 <script src="js/adjust.js"></script>
 <script src="js/scanner.js"></script>
+<!-- Image Lightbox -->
+<div id="lightbox">
+    <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+    <button id="lightbox-prev" onclick="lightboxGo(-1)">‹</button>
+    <div id="lightbox-img-wrap">
+        <img id="lightbox-img" src="" alt="">
+    </div>
+    <button id="lightbox-next" onclick="lightboxGo(1)">›</button>
+    <div id="lightbox-dots"></div>
+    <div id="lightbox-caption"></div>
+</div>
+
 <script src="js/excel.js"></script>
 <script src="js/cart.js"></script>
 <script src="js/sales.js"></script>
