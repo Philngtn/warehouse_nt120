@@ -442,19 +442,26 @@
         .detail-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin: 16px 0;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .detail-field {
+            min-width: 0;
         }
         .detail-field label {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: block;
         }
         .detail-field .field-value {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .detail-actions {
             display: flex;
@@ -1047,8 +1054,26 @@
     <div class="modal-backdrop" id="compat-modal">
         <div class="modal">
             <div class="modal-handle"></div>
-            <h2>Cross-Compatibility</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h2>Cross-Compatibility</h2>
+                <button id="add-compat-btn" class="btn btn-primary btn-sm" style="display:none;" onclick="toggleAddCompatForm()">+ Add</button>
+            </div>
             <div id="compat-content"></div>
+            <!-- Add form (admin only, hidden by default) -->
+            <div id="add-compat-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+                <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Add Cross-Compatible SKU</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <input type="text" id="compat-other-sku" placeholder="Compatible SKU (e.g. NT-1023)" style="width:100%;">
+                    <select id="compat-level" style="width:100%;">
+                        <option value="FULL">FULL — Direct replacement</option>
+                        <option value="PARTIAL">PARTIAL — Works with limitations</option>
+                        <option value="WITH_MODIFICATION">WITH MODIFICATION — Needs changes</option>
+                    </select>
+                    <input type="text" id="compat-note" placeholder="Note (optional)" style="width:100%;">
+                    <button type="button" id="save-compat-btn" class="btn btn-primary btn-block" onclick="saveCompatibility()">Save</button>
+                    <div id="compat-form-msg" style="font-size:12px;text-align:center;display:none;"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1164,6 +1189,7 @@ const state = {
     activityPage: 0,
     activityPageSize: 50,
     selectedProduct: null,
+    compatSku: null,
     scannerActive: false,
     codeReader: null,
     searchDebounce: null,
@@ -1845,8 +1871,19 @@ async function showCompatibility(sku) {
 
     hideLoading();
 
+    // Store for add form
+    state.compatSku = sku;
+
+    // Show Add button for admin
+    const addBtn = $('add-compat-btn');
+    addBtn.style.display = state.userRole === 'admin' ? '' : 'none';
+    $('add-compat-form').style.display = 'none';
+    $('compat-other-sku').value = '';
+    $('compat-note').value = '';
+    $('compat-form-msg').style.display = 'none';
+
     if (error || !data || !data.length) {
-        $('compat-content').innerHTML = '<div class="empty-state"><p>No cross-compatibility data found for this product.</p></div>';
+        $('compat-content').innerHTML = '<div class="empty-state"><p>No cross-compatibility data yet.</p></div>';
         $('compat-modal').classList.add('active');
         return;
     }
@@ -1877,6 +1914,62 @@ async function showCompatibility(sku) {
 
     $('compat-content').innerHTML = html;
     $('compat-modal').classList.add('active');
+}
+
+function toggleAddCompatForm() {
+    const form = $('add-compat-form');
+    const isHidden = form.style.display === 'none';
+    form.style.display = isHidden ? 'block' : 'none';
+    $('add-compat-btn').textContent = isHidden ? '✕ Cancel' : '+ Add';
+}
+
+async function saveCompatibility() {
+    const otherSku = $('compat-other-sku').value.trim().toUpperCase();
+    const level = $('compat-level').value;
+    const note = $('compat-note').value.trim();
+    const msgEl = $('compat-form-msg');
+    const btn = $('save-compat-btn');
+
+    if (!otherSku) {
+        msgEl.textContent = 'Compatible SKU is required';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'block';
+        return;
+    }
+    if (otherSku === state.compatSku) {
+        msgEl.textContent = 'SKU cannot be compatible with itself';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    const { error } = await db.from('cross_compatibility_matrix').insert({
+        primary_sku: state.compatSku,
+        compatible_sku: otherSku,
+        compatibility_level: level,
+        compatibility_note: note || null,
+        verified_by_user: state.user.email,
+        verified_at: new Date().toISOString()
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'Save';
+
+    if (error) {
+        msgEl.textContent = `✗ ${error.message}`;
+        msgEl.style.color = 'var(--danger)';
+    } else {
+        msgEl.textContent = '✓ Saved';
+        msgEl.style.color = 'var(--success)';
+        $('compat-other-sku').value = '';
+        $('compat-note').value = '';
+        // Refresh the list
+        await showCompatibility(state.compatSku);
+    }
+    msgEl.style.display = 'block';
 }
 
 // ============================================================
