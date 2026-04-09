@@ -433,6 +433,9 @@
             padding: 6px 14px;
             border-radius: 16px;
             font-size: 12px;
+            white-space: nowrap;
+            max-width: 90%;
+            text-align: center;
         }
 
         /* ============================================================
@@ -2761,20 +2764,8 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     if (!statusEl) statusEl = $('scanner-status');
     if (!videoEl) videoEl = $('scanner-video');
 
-    // Hint common barcode formats for faster detection
-    const hints = new Map();
-    if (ZXing.DecodeHintType && ZXing.BarcodeFormat) {
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-            ZXing.BarcodeFormat.CODE_128,
-            ZXing.BarcodeFormat.CODE_39,
-            ZXing.BarcodeFormat.EAN_13,
-            ZXing.BarcodeFormat.EAN_8,
-            ZXing.BarcodeFormat.UPC_A,
-            ZXing.BarcodeFormat.QR_CODE,
-            ZXing.BarcodeFormat.DATA_MATRIX,
-        ]);
-        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    }
+    // TRY_HARDER = hint key 1 in ZXing enum — scan all formats but work harder per frame
+    const hints = new Map([[1, true]]);
     state.codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
     let scanCooldown = false;
