@@ -1191,7 +1191,8 @@
             <div id="add-compat-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
                 <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Add Cross-Compatible SKU</div>
                 <div style="display:flex;flex-direction:column;gap:10px;">
-                    <input type="text" id="compat-other-sku" placeholder="Compatible SKU (e.g. NT-1023)" style="width:100%;">
+                    <input type="text" id="compat-other-sku" placeholder="Compatible SKU (e.g. NT-1023)" style="width:100%;" oninput="previewCompatSku(this.value)">
+                    <div id="compat-preview" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;"></div>
                     <select id="compat-level" style="width:100%;">
                         <option value="FULL">FULL — Direct replacement</option>
                         <option value="PARTIAL">PARTIAL — Works with limitations</option>
@@ -2089,11 +2090,41 @@ async function showCompatibility(sku) {
     $('compat-modal').classList.add('active');
 }
 
+let _compatPreviewTimer = null;
+function previewCompatSku(value) {
+    const preview = $('compat-preview');
+    clearTimeout(_compatPreviewTimer);
+    if (!value.trim()) { preview.style.display = 'none'; return; }
+    _compatPreviewTimer = setTimeout(() => {
+        const q = value.trim().toLowerCase();
+        const product = (state.inventory || []).find(p =>
+            (p.sku && p.sku.toLowerCase() === q) ||
+            (p.manufacturer_code && p.manufacturer_code.toLowerCase() === q)
+        );
+        if (product) {
+            preview.style.display = 'block';
+            preview.innerHTML = `
+                <div style="font-size:11px;color:var(--accent);font-weight:600;letter-spacing:0.5px;margin-bottom:2px;">${escapeHtml(product.sku)}</div>
+                <div style="font-size:14px;font-weight:700;margin-bottom:2px;">${escapeHtml(product.name)}</div>
+                <div style="font-size:12px;color:var(--text-secondary);">${escapeHtml(product.manufacturer_name || '')}${product.category_name ? ' · ' + (product.category_icon || '') + ' ' + escapeHtml(product.category_name) : ''}</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${product.location ? 'Location: ' + escapeHtml(product.location) : ''}</div>
+            `;
+        } else {
+            preview.style.display = 'block';
+            preview.innerHTML = `<div style="font-size:13px;color:var(--danger);">No product found for "${escapeHtml(value.trim())}"</div>`;
+        }
+    }, 300);
+}
+
 function toggleAddCompatForm() {
     const form = $('add-compat-form');
     const isHidden = form.style.display === 'none';
     form.style.display = isHidden ? 'block' : 'none';
     $('add-compat-btn').textContent = isHidden ? '✕ Cancel' : '+ Add';
+    if (!isHidden) {
+        $('compat-other-sku').value = '';
+        $('compat-preview').style.display = 'none';
+    }
 }
 
 async function deleteCompat(id) {
