@@ -30,13 +30,14 @@ function renderProductItem(product) {
         : catIcon;
 
     const canAddToCart = product.selling_price != null && product.qty > 0;
-    const cartBtn = canAddToCart
-        ? `<button class="btn btn-primary btn-sm"
-                style="padding:4px 10px;font-size:12px;min-height:28px;margin-top:4px;white-space:nowrap;"
-                onclick="event.stopPropagation();addToCart('${escapeHtml(product.sku)}')">
-                + Cart
-           </button>`
-        : '';
+
+    const priceRow = product.selling_price != null ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+            <span style="font-size:12px;color:var(--accent);font-weight:600;">${formatCurrency(product.selling_price)}</span>
+            ${canAddToCart ? `<button class="btn btn-primary btn-sm"
+                style="padding:2px 10px;font-size:11px;min-height:24px;white-space:nowrap;"
+                onclick="event.stopPropagation();addToCart('${escapeHtml(product.sku)}')">+ Cart</button>` : ''}
+        </div>` : '';
 
     return `
         <div class="product-item" data-sku="${escapeHtml(product.sku)}" onclick="openProductDetail('${escapeHtml(product.sku)}')">
@@ -48,12 +49,11 @@ function renderProductItem(product) {
                     ${product.manufacturer_name ? ' · ' + escapeHtml(product.manufacturer_name) : ''}
                     ${product.location ? ' · ' + escapeHtml(product.location) : ''}
                 </div>
-                ${product.selling_price != null ? `<div style="font-size:12px;color:var(--accent);font-weight:600;margin-top:2px;">${formatCurrency(product.selling_price)}</div>` : ''}
+                ${priceRow}
             </div>
-            <div class="product-qty" style="display:flex;flex-direction:column;align-items:flex-end;">
+            <div class="product-qty">
                 <div class="qty-num ${qtyClz}">${product.qty}</div>
                 <div class="qty-label">in stock</div>
-                ${cartBtn}
             </div>
         </div>
     `;

@@ -118,7 +118,7 @@ async function fetchDriveImages(sku) {
     }
 }
 
-async function loadProductImages(sku) {
+async function loadProductImages(sku, containerId = 'modal-images') {
     // 1. Local manifest images
     const localUrls = (state.localImages && state.localImages[sku]) || [];
     const localImgs = localUrls.map(url => ({ image_url: url, image_title: url.split('/').pop() }));
@@ -147,7 +147,7 @@ async function loadProductImages(sku) {
            </button>`
         : '';
 
-    const container = $('modal-images');
+    const container = $(containerId);
     // Encode the image array for inline onclick
     const imgsJson = escapeHtml(JSON.stringify(allImgs));
     let html = `<div style="margin-top:16px;">
