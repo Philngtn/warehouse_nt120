@@ -2869,7 +2869,7 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     // Laptop: 400ms / 480p — webcams need less CPU pressure; slower cadence reduces lag.
     const interval   = hasBackCam ? 150 : 400;
     const resolution = hasBackCam ? { width: { ideal: 1280 }, height: { ideal: 720 } }
-                                  : { width: { ideal: 854  }, height: { ideal: 480 } };
+                                  : { width: { ideal: 1280 }, height: { ideal: 720 } };
 
     state.codeReader = new ZXing.BrowserMultiFormatReader(null, interval);
 
