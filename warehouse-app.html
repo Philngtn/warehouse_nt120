@@ -2057,6 +2057,7 @@ async function showCompatibility(sku) {
         return;
     }
 
+    const isAdmin = state.userRole === 'admin';
     let html = '<div class="compat-list">';
     data.forEach(item => {
         const otherSku = item.primary_sku === sku ? item.compatible_sku : item.primary_sku;
@@ -2067,7 +2068,10 @@ async function showCompatibility(sku) {
             <div class="compat-item">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <strong style="color:var(--accent);">${escapeHtml(otherSku)}</strong>
-                    <span class="compat-level ${levelClass}">${item.compatibility_level}</span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="compat-level ${levelClass}">${item.compatibility_level}</span>
+                        ${isAdmin ? `<button onclick="deleteCompat(${item.id})" style="background:none;border:none;color:var(--danger);cursor:pointer;padding:2px 4px;font-size:18px;line-height:1;" title="Remove">×</button>` : ''}
+                    </div>
                 </div>
                 <div style="font-size:13px;margin-top:8px;color:var(--text-secondary);">
                     ${item.car_brand_from ? `${escapeHtml(item.car_brand_from)} ${escapeHtml(item.model_from || '')}` : ''}
@@ -2092,6 +2096,19 @@ function toggleAddCompatForm() {
     $('add-compat-btn').textContent = isHidden ? '✕ Cancel' : '+ Add';
 }
 
+async function deleteCompat(id) {
+    if (!confirm('Remove this compatibility entry?')) return;
+    showLoading();
+    const { error } = await db.from('cross_compatibility_matrix').delete().eq('id', id);
+    hideLoading();
+    if (error) {
+        showToast('Failed to remove: ' + error.message, 'error');
+    } else {
+        showToast('Removed', 'success');
+        await showCompatibility(state.compatSku);
+    }
+}
+
 async function saveCompatibility() {
     const otherSku = $('compat-other-sku').value.trim().toUpperCase();
     const level = $('compat-level').value;
@@ -2105,8 +2122,21 @@ async function saveCompatibility() {
         msgEl.style.display = 'block';
         return;
     }
-    if (otherSku === state.compatSku) {
+    if (otherSku === state.compatSku.toUpperCase()) {
         msgEl.textContent = 'SKU cannot be compatible with itself';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'block';
+        return;
+    }
+
+    // Block duplicates — check both directions
+    const { data: existing } = await db
+        .from('cross_compatibility_matrix')
+        .select('id')
+        .or(`and(primary_sku.eq.${state.compatSku},compatible_sku.eq.${otherSku}),and(primary_sku.eq.${otherSku},compatible_sku.eq.${state.compatSku})`)
+        .limit(1);
+    if (existing && existing.length) {
+        msgEl.textContent = `${otherSku} is already linked to ${state.compatSku}`;
         msgEl.style.color = 'var(--danger)';
         msgEl.style.display = 'block';
         return;
