@@ -384,14 +384,15 @@
             margin-bottom: 8px;
         }
         @media (min-width: 768px) {
+            #screen-scan { overflow: hidden; }
             .scanner-container {
                 aspect-ratio: unset;
-                height: calc(100vh - 220px);
-                min-height: 480px;
+                flex: 1;
+                min-height: 0;
             }
             .scanner-crosshair {
-                width: 420px;
-                height: 260px;
+                width: 500px;
+                height: 300px;
             }
         }
         .camera-select-row {
@@ -2673,8 +2674,11 @@ async function importFromExcel() {
 
 // List video devices using native browser API (no ZXing dependency)
 async function listVideoDevices() {
-    // Request a stream first so browser reveals device labels
-    try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) { /* will surface below */ }
+    // Briefly open a stream to trigger permission prompt and unlock device labels,
+    // then immediately stop all tracks so ZXing can open the camera cleanly.
+    let stream = null;
+    try { stream = await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) { /* surfaces in caller */ }
+    if (stream) stream.getTracks().forEach(t => t.stop());
     const all = await navigator.mediaDevices.enumerateDevices();
     return all.filter(d => d.kind === 'videoinput');
 }
