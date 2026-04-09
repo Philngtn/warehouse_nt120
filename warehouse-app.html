@@ -970,7 +970,6 @@
 
         <!-- SCAN SCREEN -->
         <div id="screen-scan" class="screen">
-            <canvas id="scan-roi-canvas" style="display:none;"></canvas>
             <div class="scanner-container" id="scanner-container">
                 <video id="scanner-video" autoplay playsinline muted></video>
                 <div class="scanner-overlay">
@@ -1363,8 +1362,6 @@ const state = {
     searchDebounce: null,
     lowStockFilter: false,
     searchResults: [],
-    _laptopScanInterval: null,
-    _laptopStream: null,
 };
 
 // ============================================================
@@ -2864,44 +2861,32 @@ async function startScanner() {
     }
 }
 
-// Map the crosshair element's position to source pixel coordinates in the video,
-// accounting for object-fit: cover scaling and centering.
-function getCropRegion(videoEl, containerEl, crosshairEl) {
-    const cW = containerEl.clientWidth;
-    const cH = containerEl.clientHeight;
-    const vW = videoEl.videoWidth  || cW;
-    const vH = videoEl.videoHeight || cH;
-    const xhW = crosshairEl.offsetWidth;
-    const xhH = crosshairEl.offsetHeight;
-
-    // With object-fit: cover the video is scaled up so it covers the container
-    const scale = Math.max(cW / vW, cH / vH);
-    // How many video-pixels are hidden on each side due to cover cropping
-    const hiddenX = (vW - cW / scale) / 2;
-    const hiddenY = (vH - cH / scale) / 2;
-
-    // Crosshair is centered in the container
-    const xhLeft = (cW - xhW) / 2;
-    const xhTop  = (cH - xhH) / 2;
-
-    return {
-        sx: Math.round(hiddenX + xhLeft / scale),
-        sy: Math.round(hiddenY + xhTop  / scale),
-        sw: Math.round(xhW / scale),
-        sh: Math.round(xhH / scale),
-    };
-}
-
 async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     if (!statusEl) statusEl = $('scanner-status');
     if (!videoEl) videoEl = $('scanner-video');
 
+    // Mobile: 150ms / 720p — phone cameras are high quality, faster decode is fine.
+    // Laptop: 400ms / 480p — webcams need less CPU pressure; slower cadence reduces lag.
+    const interval   = hasBackCam ? 150 : 400;
+    const resolution = hasBackCam ? { width: { ideal: 1280 }, height: { ideal: 720 } }
+                                  : { width: { ideal: 854  }, height: { ideal: 480 } };
+
+    state.codeReader = new ZXing.BrowserMultiFormatReader(null, interval);
+
+    const constraints = {
+        video: hasBackCam
+            ? { facingMode: { ideal: 'environment' }, ...resolution }
+            : { deviceId: { ideal: deviceId }, ...resolution }
+    };
+
     let scanCooldown = false;
     state._scanCooldownRelease = () => { scanCooldown = false; };
 
-    const onScan = async (code) => {
-        if (scanCooldown) return;
+    state.codeReader.decodeFromConstraints(constraints, videoEl, async (result, err) => {
+        if (!result || scanCooldown) return;
         scanCooldown = true;
+
+        const code = result.getText().trim();
         statusEl.textContent = `Scanned: "${code}" — looking up...`;
         showLoading();
         const product = await lookupProduct(code);
@@ -2914,49 +2899,7 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
             statusEl.textContent = hasBackCam ? 'Scanning... Point at barcode' : 'Scanning... Hold barcode up to webcam';
             setTimeout(() => { scanCooldown = false; }, 2500);
         }
-    };
-
-    if (hasBackCam) {
-        // ── MOBILE: full-frame decode, 150ms, 720p ──────────────────────────
-        state.codeReader = new ZXing.BrowserMultiFormatReader(null, 150);
-        const constraints = { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
-        state.codeReader.decodeFromConstraints(constraints, videoEl, async (result) => {
-            if (result) await onScan(result.getText().trim());
-        });
-    } else {
-        // ── LAPTOP: canvas ROI decode — only scan inside the green box ──────
-        // Lower performance: 400ms interval, 480p resolution
-        state.codeReader = new ZXing.BrowserMultiFormatReader();
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: { ideal: deviceId }, width: { ideal: 854 }, height: { ideal: 480 } }
-        });
-        videoEl.srcObject = stream;
-        state._laptopStream = stream;
-        await new Promise(resolve => { videoEl.onloadedmetadata = resolve; });
-        videoEl.play();
-
-        const canvas = $('scan-roi-canvas');
-        const ctx = canvas.getContext('2d');
-        const containerEl = $('scanner-container');
-        const crosshairEl = containerEl.querySelector('.scanner-crosshair');
-
-        state._laptopScanInterval = setInterval(() => {
-            if (!state.scannerActive || scanCooldown) return;
-            if (videoEl.readyState < 2) return;
-
-            const { sx, sy, sw, sh } = getCropRegion(videoEl, containerEl, crosshairEl);
-            if (sw < 10 || sh < 10) return;
-            canvas.width = sw;
-            canvas.height = sh;
-            ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, sw, sh);
-
-            try {
-                const result = state.codeReader.decodeFromCanvas(canvas);
-                if (result) onScan(result.getText().trim());
-            } catch (_) { /* NotFoundException — no barcode in frame, ignore */ }
-        }, 400);
-    }
+    });
 
     state.scannerActive = true;
     statusEl.textContent = hasBackCam ? 'Scanning... Point at barcode' : 'Scanning... Hold barcode up to webcam';
@@ -2973,17 +2916,9 @@ async function switchCamera(deviceId) {
 }
 
 function stopScanner() {
-    state.scannerActive = false;
-    if (state._laptopScanInterval) {
-        clearInterval(state._laptopScanInterval);
-        state._laptopScanInterval = null;
-    }
-    if (state._laptopStream) {
-        state._laptopStream.getTracks().forEach(t => t.stop());
-        state._laptopStream = null;
-    }
     if (state.codeReader) {
         state.codeReader.reset();
+        state.scannerActive = false;
     }
     $('camera-select-row').classList.remove('visible');
 }
@@ -2991,8 +2926,8 @@ function stopScanner() {
 function retryScanner() {
     $('scanner-retry-btn').style.display = 'none';
     $('scanner-status').textContent = 'Initializing camera...';
-    stopScanner();
-    state.codeReader = null;
+    state.scannerActive = false;
+    if (state.codeReader) { state.codeReader.reset(); state.codeReader = null; }
     startScanner();
 }
 
