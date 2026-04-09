@@ -1326,13 +1326,25 @@ function $$(sel) { return document.querySelectorAll(sel); }
 function showLoading() { $('loading-overlay').classList.add('active'); }
 function hideLoading() { $('loading-overlay').classList.remove('active'); }
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', key = null) {
     const container = $('toast-container');
+    // If a keyed toast already exists, update it in-place instead of stacking
+    if (key) {
+        const existing = container.querySelector(`[data-key="${key}"]`);
+        if (existing) {
+            existing.textContent = message;
+            existing.className = `toast ${type}`;
+            clearTimeout(existing._removeTimer);
+            existing._removeTimer = setTimeout(() => existing.remove(), 3000);
+            return;
+        }
+    }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
+    if (key) toast.dataset.key = key;
     container.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 3000);
+    toast._removeTimer = setTimeout(() => toast.remove(), 3000);
 }
 
 function formatDate(dateStr) {
@@ -2756,19 +2768,25 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     if (!statusEl) statusEl = $('scanner-status');
     if (!videoEl) videoEl = $('scanner-video');
 
+    let scanCooldown = false;
     state.codeReader.decodeFromVideoDevice(deviceId, videoEl, async (result, err) => {
-        if (result) {
-            const code = result.getText();
-            statusEl.textContent = `Found: ${code}`;
-            showLoading();
-            const product = await lookupProduct(code);
-            hideLoading();
-            if (product) {
-                showScannedProduct(product);
-            } else {
-                showToast(`No product found for: ${code}`, 'error');
-                $('manual-sku-input').value = code;
-            }
+        if (!result || scanCooldown) return;
+        scanCooldown = true;
+
+        const code = result.getText();
+        statusEl.textContent = `Found: ${code}`;
+        showLoading();
+        const product = await lookupProduct(code);
+        hideLoading();
+        if (product) {
+            showScannedProduct(product);
+            // Keep cooldown on until user dismisses / navigates away
+        } else {
+            showToast(`No product found for: ${code}`, 'error', 'scan-not-found');
+            $('manual-sku-input').value = code;
+            statusEl.textContent = hasBackCam ? 'Scanning... Point at barcode' : 'Scanning... Hold barcode up to webcam';
+            // Resume scanning after 2.5s
+            setTimeout(() => { scanCooldown = false; }, 2500);
         }
     });
 
