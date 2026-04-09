@@ -1180,7 +1180,10 @@
         <div class="modal">
             <div class="modal-handle"></div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h2>Cross-Compatibility</h2>
+                <button onclick="closeModal('compat-modal');openProductDetail(state.compatSku)" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Back
+                </button>
+                <h2 style="margin:0;">Cross-Compatibility</h2>
                 <button id="add-compat-btn" class="btn btn-primary btn-sm" style="display:none;" onclick="toggleAddCompatForm()">+ Add</button>
             </div>
             <div id="compat-content"></div>
@@ -1208,7 +1211,12 @@
     <div class="modal-backdrop" id="adjust-modal">
         <div class="modal">
             <div class="modal-handle"></div>
-            <h2>Adjust Inventory</h2>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+                <button onclick="closeModal('adjust-modal');openProductDetail(state.selectedProduct.sku)" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Back
+                </button>
+                <h2 style="margin:0;">Adjust Inventory</h2>
+            </div>
             <form id="adjust-form" style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
                 <div class="receive-current">
                     <span style="color:var(--text-secondary);">Current Stock</span>
