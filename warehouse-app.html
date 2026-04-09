@@ -2865,13 +2865,15 @@ async function startDecoding(deviceId, videoEl, statusEl, hasBackCam) {
     if (!statusEl) statusEl = $('scanner-status');
     if (!videoEl) videoEl = $('scanner-video');
 
-    // Mobile: 150ms / 720p — phone cameras are high quality, faster decode is fine.
-    // Laptop: 400ms / 480p — webcams need less CPU pressure; slower cadence reduces lag.
-    const interval   = hasBackCam ? 150 : 400;
-    const resolution = hasBackCam ? { width: { ideal: 1280 }, height: { ideal: 720 } }
-                                  : { width: { ideal: 1280 }, height: { ideal: 720 } };
+    // Mobile: 150ms, no TRY_HARDER (phone camera + printed barcode = easy decode).
+    // Laptop: 200ms + TRY_HARDER — webcam scanning a barcode shown on a phone screen
+    // is much harder (screen glare, pixel grid, low contrast), so ZXing needs to work
+    // harder per frame and attempt more frequently to catch a decodable frame.
+    const interval = hasBackCam ? 150 : 200;
+    const hints = new Map();
+    if (!hasBackCam) hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
-    state.codeReader = new ZXing.BrowserMultiFormatReader(null, interval);
+    state.codeReader = new ZXing.BrowserMultiFormatReader(hints.size ? hints : null, interval);
 
     const constraints = {
         video: hasBackCam
