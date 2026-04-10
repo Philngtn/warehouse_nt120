@@ -392,7 +392,8 @@
          PRODUCT DETAIL MODAL
          ============================================================ -->
     <div class="modal-backdrop" id="product-modal">
-        <div class="modal">
+        <div class="modal" style="position:relative;">
+            <button onclick="closeModal('product-modal')" class="modal-close-btn" aria-label="Close">✕</button>
             <div class="modal-handle"></div>
             <div id="modal-content">
                 <!-- Filled dynamically -->
