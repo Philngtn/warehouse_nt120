@@ -834,6 +834,21 @@ label {
     height: 100%;
     object-fit: cover;
 }
+.image-gallery .img-thumb--add {
+    border: 2px dashed var(--border);
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: border-color 0.15s, color 0.15s;
+}
+.image-gallery .img-thumb--add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
 
 
 /* Hide cost for staff via JS (class toggled) */

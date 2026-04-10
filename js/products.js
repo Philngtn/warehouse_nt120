@@ -146,7 +146,7 @@ async function loadProductImages(sku, containerId = 'modal-images') {
            </button>`
         : '';
 
-    const cameraBtn = `<label style="color:var(--accent);font-size:13px;cursor:pointer;padding:0;margin-left:8px;display:inline-flex;align-items:center;" title="Take / upload photo">
+    const cameraTile = `<label class="img-thumb img-thumb--add" title="Take / upload photo">
         📷<input type="file" accept="image/*" capture="environment" style="display:none;"
                  onchange="uploadProductImage(event,'${escapeHtml(sku)}','${escapeHtml(containerId)}')">
     </label>`;
@@ -155,7 +155,7 @@ async function loadProductImages(sku, containerId = 'modal-images') {
     let html = `<div style="margin-top:16px;">
         <div style="display:flex;align-items:center;gap:4px;">
             <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Images</label>
-            ${cameraBtn}${refreshBtn}
+            ${refreshBtn}
         </div>
         <div class="image-gallery">`;
     allImgs.forEach((img, i) => {
@@ -163,6 +163,7 @@ async function loadProductImages(sku, containerId = 'modal-images') {
             <img src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.image_title || '')}" loading="lazy">
         </div>`;
     });
+    html += cameraTile;
     html += '</div></div>';
     container.innerHTML = html;
 }
