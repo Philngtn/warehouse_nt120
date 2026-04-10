@@ -349,7 +349,7 @@ const TRANSLATIONS = {
 };
 
 // Current language — persisted in localStorage
-let _lang = localStorage.getItem('nt_lang') || 'en';
+let _lang = localStorage.getItem('nt_lang') || 'vi';
 
 function t(key) {
     return (TRANSLATIONS[_lang] && TRANSLATIONS[_lang][key]) ||
