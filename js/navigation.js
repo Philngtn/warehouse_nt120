@@ -78,6 +78,12 @@ function switchScreen(name) {
     }
 
     if (name === 'sales') {
+        const dateInput = $('sales-filter-date');
+        if (!dateInput.value) {
+            // Default to today in Vietnam time (UTC+7)
+            const now = new Date(Date.now() + 7 * 3600 * 1000);
+            dateInput.value = now.toISOString().slice(0, 10);
+        }
         loadSalesHistory(true);
     }
 }
