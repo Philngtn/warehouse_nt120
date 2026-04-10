@@ -6,21 +6,21 @@ function addToCart(sku) {
     const product = state.inventory.find(p => p.sku === sku);
     if (!product) return;
     if (!product.selling_price) {
-        showToast('No selling price set for this product', 'error');
+        showToast(t('no_price_set'), 'error');
         return;
     }
 
     const existing = state.cart.find(item => item.sku === sku);
     if (existing) {
         if (existing.qty >= product.qty) {
-            showToast(`Only ${product.qty} in stock`, 'error');
+            showToast(`Only ${product.qty} ${t('in_stock')}`, 'error');
             return;
         }
         existing.qty++;
         existing.subtotal = existing.qty * existing.selling_price;
     } else {
         if (product.qty <= 0) {
-            showToast('Out of stock', 'error');
+            showToast(t('out_of_stock'), 'error');
             return;
         }
         state.cart.push({
@@ -33,7 +33,7 @@ function addToCart(sku) {
     }
 
     updateCartBadge();
-    showToast(`${product.name} added to cart`, 'success');
+    showToast(`${product.name} ${t('added_to_cart')}`, 'success');
 }
 
 function removeFromCart(sku) {

@@ -224,6 +224,12 @@ label {
 }
 .btn-icon:active { background: var(--bg-input); }
 
+.lang-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

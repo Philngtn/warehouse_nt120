@@ -9,6 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     populateYearFilter();
+    applyI18n();
+    // Highlight active language button
+    document.querySelectorAll('.lang-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.lang === (localStorage.getItem('nt_lang') || 'en')));
     initLightbox();
 
     // Auth

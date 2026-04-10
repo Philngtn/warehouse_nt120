@@ -38,23 +38,23 @@
          ============================================================ -->
     <div id="auth-screen">
         <div class="logo">NgocThanh</div>
-        <div class="subtitle">Warehouse Inventory</div>
+        <div class="subtitle" data-i18n="subtitle">Warehouse Inventory</div>
         <form class="auth-form" id="login-form">
-            <input type="email" id="login-email" placeholder="Email" required autocomplete="email">
-            <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
-            <button type="submit" class="btn btn-primary btn-block" id="login-btn">Sign In</button>
+            <input type="email" id="login-email" placeholder="Email" data-i18n-ph="email_ph" required autocomplete="email">
+            <input type="password" id="login-password" placeholder="Password" data-i18n-ph="password_ph" required autocomplete="current-password">
+            <button type="submit" class="btn btn-primary btn-block" id="login-btn" data-i18n="sign_in">Sign In</button>
             <div id="login-error" style="color:var(--danger);font-size:13px;text-align:center;display:none;"></div>
             <div style="text-align:center;">
-                <button type="button" id="show-forgot-btn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;">Forgot password?</button>
+                <button type="button" id="show-forgot-btn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;" data-i18n="forgot_password">Forgot password?</button>
             </div>
         </form>
         <form class="auth-form" id="forgot-form" style="display:none;">
-            <div style="color:var(--text-secondary);font-size:13px;text-align:center;">Enter your email and we'll send a reset link.</div>
-            <input type="email" id="forgot-email" placeholder="Email" required autocomplete="email">
-            <button type="submit" class="btn btn-primary btn-block" id="forgot-btn">Send Reset Link</button>
+            <div style="color:var(--text-secondary);font-size:13px;text-align:center;" data-i18n="reset_hint">Enter your email and we'll send a reset link.</div>
+            <input type="email" id="forgot-email" placeholder="Email" data-i18n-ph="email_ph" required autocomplete="email">
+            <button type="submit" class="btn btn-primary btn-block" id="forgot-btn" data-i18n="send_reset">Send Reset Link</button>
             <div id="forgot-msg" style="font-size:13px;text-align:center;display:none;"></div>
             <div style="text-align:center;">
-                <button type="button" id="back-to-login-btn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;">Back to Sign In</button>
+                <button type="button" id="back-to-login-btn" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;" data-i18n="back_to_signin">Back to Sign In</button>
             </div>
         </form>
     </div>
@@ -82,32 +82,32 @@
             <div class="stats-grid" id="dashboard-stats">
                 <div class="stat-card">
                     <div class="stat-value" id="stat-total-skus">-</div>
-                    <div class="stat-label">Total SKUs</div>
+                    <div class="stat-label" data-i18n="stat_total_skus">Total SKUs</div>
                 </div>
                 <div class="stat-card warning" id="stat-low-card" onclick="showLowStockList()" style="cursor:pointer;" title="View low stock products">
                     <div class="stat-value" id="stat-low-stock">-</div>
-                    <div class="stat-label">Low Stock</div>
+                    <div class="stat-label" data-i18n="stat_low_stock">Low Stock</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="stat-today-txns">-</div>
-                    <div class="stat-label">Today's Txns</div>
+                    <div class="stat-label" data-i18n="stat_today_txns">Today's Txns</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="stat-total-value">-</div>
-                    <div class="stat-label">Total Items</div>
+                    <div class="stat-label" data-i18n="stat_total_items">Total Items</div>
                 </div>
             </div>
 
             <!-- Quick search -->
             <div class="search-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="dashboard-search" placeholder="Quick search SKU, name, or manufacturer code...">
+                <input type="text" id="dashboard-search" placeholder="Quick search SKU, name, or manufacturer code..." data-i18n-ph="dashboard_search_ph">
             </div>
 
             <!-- Recent Activity -->
             <div class="section-header">
-                <h2>Recent Activity</h2>
-                <a href="#" id="view-all-activity">View All</a>
+                <h2 data-i18n="recent_activity">Recent Activity</h2>
+                <a href="#" id="view-all-activity" data-i18n="view_all">View All</a>
             </div>
             <div class="activity-list" id="dashboard-activity"></div>
         </div>
@@ -119,7 +119,7 @@
                 <div class="scanner-overlay">
                     <div class="scanner-crosshair"></div>
                 </div>
-                <div class="scanner-status" id="scanner-status">Initializing camera...</div>
+                <div class="scanner-status" id="scanner-status" data-i18n="init_camera">Initializing camera...</div>
                 <button id="scanner-retry-btn" onclick="retryScanner()" style="display:none;position:absolute;bottom:44px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;align-items:center;gap:6px;">
                     ↺ Retry
                 </button>
@@ -133,8 +133,8 @@
 
             <!-- Manual fallback -->
             <div class="manual-input">
-                <input type="text" id="manual-sku-input" placeholder="Type SKU or manufacturer code...">
-                <button class="btn btn-primary btn-sm" id="manual-lookup-btn">Look Up</button>
+                <input type="text" id="manual-sku-input" placeholder="Type SKU or manufacturer code..." data-i18n-ph="manual_sku_ph">
+                <button class="btn btn-primary btn-sm" id="manual-lookup-btn" data-i18n="look_up">Look Up</button>
             </div>
 
             <!-- Product detail (shown after scan) -->
@@ -146,7 +146,7 @@
 
             <div id="scan-empty" class="empty-state">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                <p>Scan a barcode or type a SKU to look up a product</p>
+                <p data-i18n="scan_empty">Scan a barcode or type a SKU to look up a product</p>
             </div>
         </div>
 
@@ -154,7 +154,7 @@
         <div id="screen-search" class="screen">
             <div class="search-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="search-input" placeholder="Search SKU, name, manufacturer code...">
+                <input type="text" id="search-input" placeholder="Search SKU, name, manufacturer code..." data-i18n-ph="search_ph">
             </div>
 
             <div class="filter-bar">
@@ -167,7 +167,7 @@
                 <select id="filter-year">
                     <option value="">All Years</option>
                 </select>
-                <button type="button" id="filter-low-stock-btn" class="filter-chip" onclick="toggleLowStockFilter()">⚠️ Low Stock</button>
+                <button type="button" id="filter-low-stock-btn" class="filter-chip" onclick="toggleLowStockFilter()" data-i18n="low_stock_filter">⚠️ Low Stock</button>
             </div>
 
             <div id="search-results-bar" style="display:none;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px;color:var(--text-secondary);">
@@ -178,7 +178,7 @@
             <div class="product-list" id="search-results"></div>
             <div id="search-empty" class="empty-state" style="display:none;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <p>No products found</p>
+                <p data-i18n="no_products">No products found</p>
             </div>
         </div>
 
@@ -189,13 +189,13 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                     Back
                 </button>
-                <h2>Receive Stock</h2>
+                <h2 data-i18n="receive_stock">Receive Stock</h2>
             </div>
 
             <!-- Search for product first -->
             <div class="manual-input">
-                <input type="text" id="receive-search" placeholder="Scan or type SKU...">
-                <button class="btn btn-primary btn-sm" id="receive-lookup-btn">Find</button>
+                <input type="text" id="receive-search" placeholder="Scan or type SKU..." data-i18n-ph="receive_search_ph">
+                <button class="btn btn-primary btn-sm" id="receive-lookup-btn" data-i18n="find">Find</button>
             </div>
 
             <div id="receive-product-info" style="display:none;">
@@ -205,24 +205,24 @@
                     <div class="detail-manufacturer" id="receive-manufacturer"></div>
 
                     <div class="receive-current" style="margin-top:12px;">
-                        <span style="color:var(--text-secondary);">Current Stock</span>
+                        <span style="color:var(--text-secondary);" data-i18n="current_stock">Current Stock</span>
                         <span class="current-qty" id="receive-current-qty">0</span>
                     </div>
                 </div>
 
                 <form class="receive-form" id="receive-form">
-                    <label>Quantity Received</label>
-                    <input type="number" id="receive-qty" min="1" placeholder="Enter quantity" required>
+                    <label data-i18n="qty_received">Quantity Received</label>
+                    <input type="number" id="receive-qty" min="1" placeholder="Enter quantity" data-i18n-ph="enter_qty_ph" required>
 
-                    <label>Manufacturer (if changed)</label>
+                    <label data-i18n="manufacturer_if_changed">Manufacturer (if changed)</label>
                     <select id="receive-manufacturer-select">
-                        <option value="">No change</option>
+                        <option value="" data-i18n="no_change">No change</option>
                     </select>
 
-                    <label>Notes (optional)</label>
-                    <textarea id="receive-notes" placeholder="Any notes about this shipment..."></textarea>
+                    <label data-i18n="notes_optional">Notes (optional)</label>
+                    <textarea id="receive-notes" placeholder="Any notes about this shipment..." data-i18n-ph="shipment_notes_ph"></textarea>
 
-                    <button type="submit" class="btn btn-primary btn-block" id="receive-confirm-btn">
+                    <button type="submit" class="btn btn-primary btn-block" id="receive-confirm-btn" data-i18n="confirm_receive">
                         Confirm Receive
                     </button>
                 </form>
@@ -230,7 +230,7 @@
 
             <div id="receive-empty" class="empty-state">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-                <p>Search for a product to receive stock</p>
+                <p data-i18n="receive_empty">Search for a product to receive stock</p>
             </div>
         </div>
 
@@ -241,18 +241,18 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                     Back
                 </button>
-                <h2>Activity Log</h2>
+                <h2 data-i18n="activity_log">Activity Log</h2>
             </div>
 
             <div class="filter-bar">
                 <select id="activity-filter-type">
-                    <option value="">All Types</option>
-                    <option value="received">Received</option>
-                    <option value="adjusted">Adjusted</option>
-                    <option value="sold">Sold</option>
-                    <option value="returned">Returned</option>
-                    <option value="created">Created</option>
-                    <option value="updated">Updated</option>
+                    <option value="" data-i18n="all_types">All Types</option>
+                    <option value="received" data-i18n="type_received">Received</option>
+                    <option value="adjusted" data-i18n="type_adjusted">Adjusted</option>
+                    <option value="sold" data-i18n="type_sold">Sold</option>
+                    <option value="returned" data-i18n="type_returned">Returned</option>
+                    <option value="created" data-i18n="type_created">Created</option>
+                    <option value="updated" data-i18n="type_updated">Updated</option>
                 </select>
                 <input type="date" id="activity-filter-date" style="flex:1;">
             </div>
@@ -260,7 +260,7 @@
             <div class="activity-list" id="activity-list"></div>
 
             <div class="pagination" id="activity-pagination">
-                <button class="btn btn-secondary btn-sm" id="activity-load-more" style="display:none;">Load More</button>
+                <button class="btn btn-secondary btn-sm" id="activity-load-more" style="display:none;" data-i18n="load_more">Load More</button>
             </div>
         </div>
 
@@ -271,76 +271,85 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                     Back
                 </button>
-                <h2>Sales History</h2>
+                <h2 data-i18n="sales_history">Sales History</h2>
             </div>
 
             <div class="search-box" style="margin-bottom:8px;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="sales-search-input" placeholder="Search by customer name or phone...">
+                <input type="text" id="sales-search-input" placeholder="Search by customer name or phone..." data-i18n-ph="sales_search_ph">
             </div>
             <input type="date" id="sales-filter-date" style="margin-bottom:12px;width:auto;align-self:stretch;cursor:pointer;">
 
             <div class="activity-list" id="sales-results"></div>
             <div id="sales-empty" class="empty-state" style="display:none;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <p>No sales found</p>
+                <p data-i18n="no_sales">No sales found</p>
             </div>
             <div class="pagination">
-                <button class="btn btn-secondary btn-sm" id="sales-load-more" style="display:none;">Load More</button>
+                <button class="btn btn-secondary btn-sm" id="sales-load-more" style="display:none;" data-i18n="load_more">Load More</button>
             </div>
         </div>
 
         <!-- SETTINGS SCREEN -->
         <div id="screen-settings" class="screen">
-            <h2 style="margin-bottom:20px;">Settings</h2>
+            <h2 style="margin-bottom:20px;" data-i18n="settings">Settings</h2>
 
             <!-- Account -->
-            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Account</h3></div>
+            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;" data-i18n="account">Account</h3></div>
             <div class="detail-card" style="margin-bottom:16px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;">
                     <div>
                         <div id="settings-email" style="font-size:12px;color:var(--text-secondary);"></div>
                         <span id="settings-role-badge" class="role-badge" style="margin-top:4px;display:inline-block;"></span>
                     </div>
-                    <button class="btn btn-secondary btn-sm" style="padding:8px 14px;font-size:13px;flex-shrink:0;" onclick="handleLogout()">Sign Out</button>
+                    <button class="btn btn-secondary btn-sm" style="padding:8px 14px;font-size:13px;flex-shrink:0;" onclick="handleLogout()" data-i18n="sign_out">Sign Out</button>
                 </div>
             </div>
 
             <!-- Activity -->
-            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Activity</h3></div>
+            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;" data-i18n="activity_section">Activity</h3></div>
             <div class="detail-card" style="margin-bottom:16px;">
                 <div style="padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="switchScreen('activity')">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:14px;font-weight:600;">View Activity Log</span>
+                        <span style="font-size:14px;font-weight:600;" data-i18n="view_activity_log">View Activity Log</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Full history of stock changes</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;" data-i18n="activity_desc">Full history of stock changes</div>
                 </div>
                 <div style="padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="switchScreen('sales')">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:14px;font-weight:600;">Sales History</span>
+                        <span style="font-size:14px;font-weight:600;" data-i18n="sales_history">Sales History</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Browse past orders by customer</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;" data-i18n="sales_desc">Browse past orders by customer</div>
                 </div>
                 <div style="padding:12px 0;cursor:pointer;" onclick="switchScreen('receive')">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:14px;font-weight:600;">Receive Stock</span>
+                        <span style="font-size:14px;font-weight:600;" data-i18n="receive_stock">Receive Stock</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Manually add incoming stock</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;" data-i18n="receive_desc">Manually add incoming stock</div>
                 </div>
             </div>
 
             <!-- App Info -->
-            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">App</h3></div>
+            <div class="section-header" style="margin-bottom:8px;"><h3 style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;" data-i18n="app_section">App</h3></div>
             <div class="detail-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+                    <span style="font-size:13px;color:var(--text-secondary);" data-i18n="language_label">Language</span>
+                    <div style="display:flex;gap:6px;">
+                        <button class="lang-btn" data-lang="en" onclick="setLanguage('en')"
+                            style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;">EN</button>
+                        <button class="lang-btn" data-lang="vi" onclick="setLanguage('vi')"
+                            style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;">VI</button>
+                    </div>
+                </div>
                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-                    <span style="font-size:13px;color:var(--text-secondary);">App Name</span>
+                    <span style="font-size:13px;color:var(--text-secondary);" data-i18n="app_name_label">App Name</span>
                     <span style="font-size:13px;font-weight:600;">NgocThanh Inventory</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;padding:8px 0;">
-                    <span style="font-size:13px;color:var(--text-secondary);">Version</span>
+                    <span style="font-size:13px;color:var(--text-secondary);" data-i18n="version_label">Version</span>
                     <span style="font-size:13px;font-weight:600;">2.0.0</span>
                 </div>
             </div>
@@ -362,19 +371,19 @@
         <nav class="bottom-nav">
             <button class="nav-btn active" data-screen="dashboard">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                <span>Dashboard</span>
+                <span data-i18n="nav_dashboard">Dashboard</span>
             </button>
             <button class="nav-btn" data-screen="scan">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2"/><path d="M17 3h2a2 2 0 012 2v2"/><path d="M21 17v2a2 2 0 01-2 2h-2"/><path d="M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-                <span>Scan</span>
+                <span data-i18n="nav_scan">Scan</span>
             </button>
             <button class="nav-btn" data-screen="search">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <span>Search</span>
+                <span data-i18n="nav_search">Search</span>
             </button>
             <button class="nav-btn" data-screen="settings">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-                <span>Settings</span>
+                <span data-i18n="nav_settings">Settings</span>
             </button>
         </nav>
     </div>
@@ -401,23 +410,23 @@
                 <button onclick="closeModal('compat-modal');openProductDetail(state.compatSku)" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Back
                 </button>
-                <h2 style="margin:0;">Cross-Compatibility</h2>
-                <button id="add-compat-btn" class="btn btn-primary btn-sm" style="display:none;" onclick="toggleAddCompatForm()">+ Add</button>
+                <h2 style="margin:0;" data-i18n="cross_compat">Cross-Compatibility</h2>
+                <button id="add-compat-btn" class="btn btn-primary btn-sm" style="display:none;" onclick="toggleAddCompatForm()" data-i18n="add">+ Add</button>
             </div>
             <div id="compat-content"></div>
             <!-- Add form (admin only, hidden by default) -->
             <div id="add-compat-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
-                <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Add Cross-Compatible SKU</div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:10px;" data-i18n="add_compat_title">Add Cross-Compatible SKU</div>
                 <div style="display:flex;flex-direction:column;gap:10px;">
-                    <input type="text" id="compat-other-sku" placeholder="Compatible SKU (e.g. NT-1023)" style="width:100%;" oninput="previewCompatSku(this.value)">
+                    <input type="text" id="compat-other-sku" placeholder="Compatible SKU (e.g. NT-1023)" data-i18n-ph="compat_sku_ph" style="width:100%;" oninput="previewCompatSku(this.value)">
                     <div id="compat-preview" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;"></div>
                     <select id="compat-level" style="width:100%;">
-                        <option value="FULL">FULL — Direct replacement</option>
-                        <option value="PARTIAL">PARTIAL — Works with limitations</option>
-                        <option value="WITH_MODIFICATION">WITH MODIFICATION — Needs changes</option>
+                        <option value="FULL" data-i18n="compat_full">FULL — Direct replacement</option>
+                        <option value="PARTIAL" data-i18n="compat_partial">PARTIAL — Works with limitations</option>
+                        <option value="WITH_MODIFICATION" data-i18n="compat_mod">WITH MODIFICATION — Needs changes</option>
                     </select>
-                    <input type="text" id="compat-note" placeholder="Note (optional)" style="width:100%;">
-                    <button type="button" id="save-compat-btn" class="btn btn-primary btn-block" onclick="saveCompatibility()">Save</button>
+                    <input type="text" id="compat-note" placeholder="Note (optional)" data-i18n-ph="compat_note_ph" style="width:100%;">
+                    <button type="button" id="save-compat-btn" class="btn btn-primary btn-block" onclick="saveCompatibility()" data-i18n="save">Save</button>
                     <div id="compat-form-msg" style="font-size:12px;text-align:center;display:none;"></div>
                 </div>
             </div>
@@ -434,27 +443,27 @@
                 <button onclick="closeModal('adjust-modal');openProductDetail(state.selectedProduct.sku)" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Back
                 </button>
-                <h2 style="margin:0;">Adjust Inventory</h2>
+                <h2 style="margin:0;" data-i18n="adjust_inventory">Adjust Inventory</h2>
             </div>
             <form id="adjust-form" style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
                 <div class="receive-current">
-                    <span style="color:var(--text-secondary);">Current Stock</span>
+                    <span style="color:var(--text-secondary);" data-i18n="current_stock">Current Stock</span>
                     <span class="current-qty" id="adjust-current-qty">0</span>
                 </div>
-                <label>New Quantity</label>
+                <label data-i18n="new_qty">New Quantity</label>
                 <input type="number" id="adjust-new-qty" min="0" required>
-                <label>Reason</label>
+                <label data-i18n="reason">Reason</label>
                 <select id="adjust-reason" required>
-                    <option value="">Select reason...</option>
-                    <option value="Physical count correction">Physical count correction</option>
-                    <option value="Damaged goods">Damaged goods</option>
-                    <option value="Customer return">Customer return</option>
-                    <option value="Data entry error">Data entry error</option>
-                    <option value="Other">Other</option>
+                    <option value="" data-i18n="select_reason">Select reason...</option>
+                    <option value="Physical count correction" data-i18n="reason_count">Physical count correction</option>
+                    <option value="Damaged goods" data-i18n="reason_damaged">Damaged goods</option>
+                    <option value="Customer return" data-i18n="reason_return">Customer return</option>
+                    <option value="Data entry error" data-i18n="reason_error">Data entry error</option>
+                    <option value="Other" data-i18n="reason_other">Other</option>
                 </select>
-                <label>Notes (optional)</label>
-                <textarea id="adjust-notes" placeholder="Additional details..."></textarea>
-                <button type="submit" class="btn btn-primary btn-block">Confirm Adjustment</button>
+                <label data-i18n="notes_optional">Notes (optional)</label>
+                <textarea id="adjust-notes" placeholder="Additional details..." data-i18n-ph="additional_details_ph"></textarea>
+                <button type="submit" class="btn btn-primary btn-block" data-i18n="confirm_adjustment">Confirm Adjustment</button>
             </form>
         </div>
     </div>
@@ -464,42 +473,42 @@
         <div class="modal">
             <div class="modal-handle"></div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                <h2>Import / Export</h2>
+                <h2 data-i18n="import_export">Import / Export</h2>
                 <button type="button" onclick="closeAllModals()" style="background:none;border:none;color:var(--text-secondary);font-size:20px;cursor:pointer;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
             </div>
 
             <!-- TABS -->
             <div style="display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:10px;">
-                <button type="button" class="tab-btn active" data-tab="export" style="flex:1;padding:10px;text-align:center;cursor:pointer;border:none;background:none;color:var(--accent);border-bottom:2px solid var(--accent);">Export</button>
-                <button type="button" class="tab-btn" data-tab="import" style="flex:1;padding:10px;text-align:center;cursor:pointer;border:none;background:none;color:var(--text-secondary);">Import</button>
+                <button type="button" class="tab-btn active" data-tab="export" style="flex:1;padding:10px;text-align:center;cursor:pointer;border:none;background:none;color:var(--accent);border-bottom:2px solid var(--accent);" data-i18n="export_tab">Export</button>
+                <button type="button" class="tab-btn" data-tab="import" style="flex:1;padding:10px;text-align:center;cursor:pointer;border:none;background:none;color:var(--text-secondary);" data-i18n="import_tab">Import</button>
             </div>
 
             <!-- EXPORT TAB -->
             <div id="tab-export" class="tab-content" style="display:block;">
                 <div style="margin-bottom:15px;font-size:13px;color:var(--text-secondary);">
-                    <strong>Columns included:</strong><br>
+                    <strong data-i18n="columns_included">Columns included:</strong><br>
                     SKU, Name, Manufacturer, Manufacturer Code, Category, Qty, Location, Selling Price, Cost, Reorder Level, Reorder Qty, Model Year Start, Model Year End, Description, Discontinued
                 </div>
-                <button type="button" id="export-btn" class="btn btn-primary btn-block" style="cursor:pointer;">📥 Download Excel</button>
+                <button type="button" id="export-btn" class="btn btn-primary btn-block" style="cursor:pointer;" data-i18n="download_excel">📥 Download Excel</button>
                 <div id="export-msg" style="margin-top:10px;font-size:12px;text-align:center;display:none;"></div>
             </div>
 
             <!-- IMPORT TAB -->
             <div id="tab-import" class="tab-content" style="display:none;">
                 <div style="margin-bottom:15px;">
-                    <label style="display:block;margin-bottom:8px;font-size:14px;">Select import file:</label>
-                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Expected format: <code>NgocThanh_DD_MM_YYYY_IN.xlsx</code></div>
+                    <label style="display:block;margin-bottom:8px;font-size:14px;" data-i18n="select_file">Select import file:</label>
+                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;"><span data-i18n="expected_format">Expected format:</span> <code>NgocThanh_DD_MM_YYYY_IN.xlsx</code></div>
                     <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="width:100%;">
                 </div>
                 <div id="import-preview" style="margin-bottom:15px;font-size:12px;display:none;">
-                    <strong>Preview (first 5 rows):</strong>
+                    <strong data-i18n="preview_label">Preview (first 5 rows):</strong>
                     <div id="preview-content" style="background:var(--bg-secondary);padding:10px;border-radius:var(--radius-sm);margin-top:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:11px;"></div>
                 </div>
                 <label id="wipe-replace-row" style="display:none;align-items:flex-start;gap:10px;margin-bottom:12px;padding:10px;background:rgba(220,38,38,0.1);border:1px solid var(--danger);border-radius:var(--radius-sm);cursor:pointer;">
                     <input type="checkbox" id="wipe-replace-chk" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;cursor:pointer;">
                     <span style="font-size:12px;line-height:1.4;"><strong style="color:var(--danger);">Wipe &amp; Replace</strong> — permanently delete ALL existing products before importing. Use when your sheet is the complete new inventory. A backup will be downloaded first.</span>
                 </label>
-                <button type="button" id="import-btn" class="btn btn-primary btn-block" style="cursor:pointer;display:none;">⬆️ Upload to Database</button>
+                <button type="button" id="import-btn" class="btn btn-primary btn-block" style="cursor:pointer;display:none;" data-i18n="upload_db">⬆️ Upload to Database</button>
                 <div id="import-msg" style="margin-top:10px;font-size:12px;text-align:center;display:none;"></div>
                 <div id="import-errors" style="margin-top:10px;font-size:11px;color:var(--danger);display:none;background:var(--bg-secondary);padding:8px;border-radius:var(--radius-sm);max-height:220px;overflow-y:auto;"></div>
             </div>
@@ -513,7 +522,7 @@
         <div class="modal" style="max-height:92vh;">
             <div class="modal-handle"></div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h2 style="margin:0;">Cart</h2>
+                <h2 style="margin:0;" data-i18n="cart">Cart</h2>
                 <button onclick="closeModal('cart-modal')"
                     style="background:none;border:none;color:var(--text-secondary);font-size:22px;cursor:pointer;
                            width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
@@ -522,25 +531,25 @@
             <div id="cart-items-list"></div>
 
             <div id="cart-empty" class="empty-state">
-                <p>Cart is empty</p>
+                <p data-i18n="cart_empty">Cart is empty</p>
             </div>
 
             <div id="cart-totals" style="display:none;border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">
                 <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-bottom:16px;">
-                    <span>Total</span>
+                    <span data-i18n="total">Total</span>
                     <span id="cart-total-amount" style="color:var(--accent);"></span>
                 </div>
 
                 <!-- Customer info -->
                 <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
-                    <input type="text" id="cart-customer-name" placeholder="Customer name (optional)">
-                    <input type="tel" id="cart-customer-phone" placeholder="Phone number (optional)">
-                    <textarea id="cart-order-notes" placeholder="Order notes (optional)" style="min-height:60px;"></textarea>
+                    <input type="text" id="cart-customer-name" placeholder="Customer name (optional)" data-i18n-ph="customer_name_ph">
+                    <input type="tel" id="cart-customer-phone" placeholder="Phone number (optional)" data-i18n-ph="phone_ph">
+                    <textarea id="cart-order-notes" placeholder="Order notes (optional)" style="min-height:60px;" data-i18n-ph="order_notes_ph"></textarea>
                 </div>
 
                 <div style="display:flex;gap:8px;">
-                    <button class="btn btn-secondary" style="flex:1;" onclick="clearCart()">Clear</button>
-                    <button class="btn btn-primary" style="flex:2;" id="checkout-btn" onclick="handleCheckout()">
+                    <button class="btn btn-secondary" style="flex:1;" onclick="clearCart()" data-i18n="clear">Clear</button>
+                    <button class="btn btn-primary" style="flex:2;" id="checkout-btn" onclick="handleCheckout()" data-i18n="checkout">
                         Checkout
                     </button>
                 </div>
@@ -555,15 +564,15 @@
         <div class="modal" style="max-height:92vh;">
             <div class="modal-handle"></div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h2 style="margin:0;">Receipt</h2>
+                <h2 style="margin:0;" data-i18n="receipt">Receipt</h2>
                 <button onclick="closeModal('receipt-modal')"
                     style="background:none;border:none;color:var(--text-secondary);font-size:22px;cursor:pointer;
                            width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
             </div>
             <div id="receipt-content"></div>
             <div style="display:flex;gap:8px;margin-top:16px;">
-                <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('receipt-modal')">Close</button>
-                <button class="btn btn-primary" style="flex:1;" onclick="printReceipt()">Print</button>
+                <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('receipt-modal')" data-i18n="close">Close</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="printReceipt()" data-i18n="print">Print</button>
             </div>
         </div>
     </div>
@@ -584,6 +593,7 @@
 
 <!-- JS files — load order matters (globals must be defined before use) -->
 <script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/navigation.js"></script>

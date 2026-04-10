@@ -138,7 +138,7 @@ async function loadProductImages(sku, containerId = 'modal-images') {
     const refreshBtn = CONFIG.DRIVE_FOLDER_ID
         ? `<button onclick="refreshDriveImages('${escapeHtml(sku)}')"
                style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:0;margin-left:8px;">
-               ↻ Refresh
+               ${t('refresh')}
            </button>`
         : '';
 
@@ -150,7 +150,7 @@ async function loadProductImages(sku, containerId = 'modal-images') {
     const container = $(containerId);
     let html = `<div style="margin-top:16px;">
         <div style="display:flex;align-items:center;gap:4px;">
-            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Images</label>
+            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">${t('images_label')}</label>
             ${refreshBtn}
         </div>
         <div class="image-gallery">`;

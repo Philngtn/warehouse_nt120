@@ -60,7 +60,7 @@ function renderSalesOrders(orders) {
             </div>
             <div class="activity-body">
                 <strong>${escapeHtml(order.invoice_number)}</strong>
-                — ${formatCurrency(order.total_amount)} · ${order.item_count} item${order.item_count !== 1 ? 's' : ''}
+                — ${formatCurrency(order.total_amount)} · ${order.item_count} ${t('items_label')}
             </div>
             ${order.customer_name || order.customer_phone ? `
             <div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">
@@ -68,7 +68,7 @@ function renderSalesOrders(orders) {
                 ${order.customer_phone ? ' · ' + escapeHtml(order.customer_phone) : ''}
             </div>` : ''}
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
-                Sold by ${escapeHtml(order.sold_by)}
+                ${t('sold_by')} ${escapeHtml(order.sold_by)}
             </div>
         </div>
     `).join('');
