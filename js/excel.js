@@ -308,7 +308,7 @@ async function importFromExcel() {
         // Show results
         const totalProcessed = imported + updated;
         if (errors.length > 0) {
-            errorsEl.innerHTML = errors.join('<br>');
+            errorsEl.innerHTML = errors.map(escapeHtml).join('<br>');
             errorsEl.style.display = 'block';
         }
 

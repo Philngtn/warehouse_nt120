@@ -177,12 +177,7 @@ function showScannedProduct(product) {
         </div>
         ${renderDetailHeader(product)}
         ${renderDetailGrid(product)}
-        <div class="detail-actions">
-            <button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>
-            <button class="btn btn-primary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>
-            ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="showAdjustModal('${escapeHtml(product.sku)}')">Adjust</button>` : ''}
-            ${canAddToCart ? `<button class="btn btn-primary btn-sm" onclick="addToCart('${escapeHtml(product.sku)}')">Add to Cart</button>` : ''}
-        </div>
+        ${renderDetailActions(product, isAdmin, canAddToCart)}
         <div id="scan-images"></div>
     `;
     loadProductImages(product.sku, 'scan-images');

@@ -181,15 +181,17 @@ function handleInventoryChange(payload) {
         // Reload the single row from the view to preserve joined columns
         // (manufacturer_name, category_name etc. are absent in raw table payloads)
         const viewName = state.userRole === 'admin' ? 'inventory_admin_view' : 'inventory_staff_view';
-        db.from(viewName).select('*').eq('id', newRow.id).single().then(({ data }) => {
-            if (!data) return;
-            const idx = state.inventory.findIndex(p => p.id === newRow.id);
-            if (idx >= 0) state.inventory[idx] = data;
-            else state.inventory.push(data);
-            if (state.selectedProduct && state.selectedProduct.id === newRow.id) {
-                state.selectedProduct = data;
-            }
-        });
+        db.from(viewName).select('*').eq('id', newRow.id).single()
+            .then(({ data }) => {
+                if (!data) return;
+                const idx = state.inventory.findIndex(p => p.id === newRow.id);
+                if (idx >= 0) state.inventory[idx] = data;
+                else state.inventory.push(data);
+                if (state.selectedProduct && state.selectedProduct.id === newRow.id) {
+                    state.selectedProduct = data;
+                }
+            })
+            .catch(err => console.warn('Realtime inventory refresh failed:', err));
         loadDashboardStats();
     } else if (eventType === 'INSERT' && newRow) {
         loadInventory();

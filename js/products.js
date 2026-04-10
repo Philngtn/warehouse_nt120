@@ -62,13 +62,8 @@ async function openProductDetail(sku) {
         html += `<div style="margin:12px 0;"><img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name)}" style="width:100%;border-radius:var(--radius-sm);max-height:200px;object-fit:contain;background:var(--bg-input);" loading="lazy"></div>`;
     }
 
-    html += `<div class="detail-actions">
-        <button class="btn btn-secondary btn-sm" onclick="showCompatibility('${escapeHtml(product.sku)}')">Cross-Check</button>
-        <button class="btn btn-secondary btn-sm" onclick="goReceive('${escapeHtml(product.sku)}')">Receive</button>
-        ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="showAdjustModal('${escapeHtml(product.sku)}')">Adjust</button>` : ''}
-        ${canAddToCart ? `<button class="btn btn-primary btn-sm" onclick="addToCart('${escapeHtml(product.sku)}');closeModal('product-modal')">Add to Cart</button>` : ''}
-    </div>
-    <div id="modal-images"></div></div>`;
+    html += renderDetailActions(product, isAdmin, canAddToCart, 'product-modal');
+    html += `<div id="modal-images"></div></div>`;
 
     $('modal-content').innerHTML = html;
     $('product-modal').classList.add('active');
@@ -289,6 +284,8 @@ function lightboxGo(delta) {
 }
 
 function _lbRender() {
+    if (!_lbImgs[_lbIdx]) return;
+
     const img  = $('lightbox-img');
     const prev = $('lightbox-prev');
     const next = $('lightbox-next');

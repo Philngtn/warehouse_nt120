@@ -99,30 +99,19 @@ function renderCartItems() {
     $('cart-total-amount').textContent = formatCurrency(total);
 
     list.innerHTML = state.cart.map(item => `
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                    ${escapeHtml(item.name)}
-                </div>
-                <div style="font-size:12px;color:var(--text-secondary);">
-                    ${escapeHtml(item.sku)} · ${formatCurrency(item.selling_price)} each
-                </div>
+        <div class="cart-item-row">
+            <div class="cart-item-info">
+                <div class="cart-item-name">${escapeHtml(item.name)}</div>
+                <div class="cart-item-meta">${escapeHtml(item.sku)} · ${formatCurrency(item.selling_price)} each</div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                <button onclick="updateCartItemQty('${escapeHtml(item.sku)}', -1)"
-                    style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);
-                           background:var(--bg-input);color:var(--text-primary);font-size:18px;
-                           cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
+            <div class="cart-item-qty-controls">
+                <button class="cart-qty-btn" onclick="updateCartItemQty('${escapeHtml(item.sku)}', -1)">−</button>
                 <span style="width:28px;text-align:center;font-weight:700;">${item.qty}</span>
-                <button onclick="updateCartItemQty('${escapeHtml(item.sku)}', 1)"
-                    style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);
-                           background:var(--bg-input);color:var(--text-primary);font-size:18px;
-                           cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
+                <button class="cart-qty-btn" onclick="updateCartItemQty('${escapeHtml(item.sku)}', 1)">+</button>
             </div>
-            <div style="text-align:right;flex-shrink:0;min-width:64px;">
+            <div class="cart-item-subtotal">
                 <div style="font-weight:700;color:var(--accent);">${formatCurrency(item.subtotal)}</div>
-                <button onclick="removeFromCart('${escapeHtml(item.sku)}')"
-                    style="background:none;border:none;color:var(--danger);font-size:11px;cursor:pointer;padding:2px 0;">Remove</button>
+                <button class="cart-remove-btn" onclick="removeFromCart('${escapeHtml(item.sku)}')">Remove</button>
             </div>
         </div>
     `).join('');
@@ -239,13 +228,13 @@ async function handleCheckout() {
 function showReceipt(order) {
     const itemRows = order.items.map(item => `
         <tr>
-            <td style="padding:6px 0;border-bottom:1px solid #eee;">
+            <td class="receipt-td">
                 ${escapeHtml(item.name)}<br>
-                <span style="font-size:11px;color:#666;">${escapeHtml(item.sku)}</span>
+                <span class="receipt-sku">${escapeHtml(item.sku)}</span>
             </td>
-            <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:center;">${item.qty}</td>
-            <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;">${formatCurrency(item.selling_price)}</td>
-            <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;font-weight:700;">${formatCurrency(item.subtotal)}</td>
+            <td class="receipt-td receipt-td--center">${item.qty}</td>
+            <td class="receipt-td receipt-td--right">${formatCurrency(item.selling_price)}</td>
+            <td class="receipt-td receipt-td--right receipt-td--bold">${formatCurrency(item.subtotal)}</td>
         </tr>
     `).join('');
 

@@ -59,10 +59,11 @@ function renderProductItem(product) {
     `;
 }
 
-function renderActivityItem(txn) {
+// skuMap is optional — pass a pre-built Map for bulk rendering to avoid O(n²)
+function renderActivityItem(txn, skuMap) {
     const typeClass = `type-${txn.type}`;
     const qtyChange = txn.quantity_change > 0 ? `+${txn.quantity_change}` : txn.quantity_change;
-    const product = state.inventory.find(p => p.sku === txn.sku);
+    const product = skuMap ? skuMap.get(txn.sku) : state.inventory.find(p => p.sku === txn.sku);
     const productName = product ? escapeHtml(product.name) : '';
     const manufacturerName = product ? escapeHtml(product.manufacturer_name || '') : '';
 
@@ -98,7 +99,9 @@ function renderActivityList(items, containerId) {
         container.innerHTML = `<div class="empty-state"><p>${t('no_activity')}</p></div>`;
         return;
     }
-    container.innerHTML += items.map(renderActivityItem).join('');
+    // Pre-build map once for O(n) lookups instead of O(n²) find() per item
+    const skuMap = new Map(state.inventory.map(p => [p.sku, p]));
+    container.innerHTML += items.map(txn => renderActivityItem(txn, skuMap)).join('');
 }
 
 // ============================================================
@@ -191,5 +194,18 @@ function renderDetailGrid(product) {
                     <div class="field-value">${escapeHtml(product.manufacturer_code || 'N/A')}</div>
                 </div>
             </div>
+        </div>`;
+}
+
+// closeModalId: if set, addToCart also closes that modal (e.g. 'product-modal')
+function renderDetailActions(product, isAdmin, canAddToCart, closeModalId = '') {
+    const sku = escapeHtml(product.sku);
+    const closeCall = closeModalId ? `;closeModal('${closeModalId}')` : '';
+    return `
+        <div class="detail-actions">
+            <button class="btn btn-secondary btn-sm" onclick="showCompatibility('${sku}')">Cross-Check</button>
+            <button class="btn btn-secondary btn-sm" onclick="goReceive('${sku}')">Receive</button>
+            ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="showAdjustModal('${sku}')">Adjust</button>` : ''}
+            ${canAddToCart ? `<button class="btn btn-primary btn-sm" onclick="addToCart('${sku}')${closeCall}">Add to Cart</button>` : ''}
         </div>`;
 }
