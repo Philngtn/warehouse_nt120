@@ -212,6 +212,13 @@ async function handleCheckout() {
         closeModal('cart-modal');
         loadDashboardStats();
 
+        // Refresh visible search results so quantities update immediately
+        const activeScreen = document.querySelector('.screen.active');
+        if (activeScreen) {
+            if (activeScreen.id === 'screen-search') performSearch();
+            else if (activeScreen.id === 'screen-dashboard') performDashboardSearch();
+        }
+
     } catch (err) {
         console.error('Checkout error:', err);
         showToast('Checkout failed: ' + err.message, 'error');
