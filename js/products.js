@@ -174,6 +174,28 @@ async function refreshDriveImages(sku) {
     await loadProductImages(sku);
 }
 
+// Resize an image File to fit within maxPx on the longest side, returning a JPEG Blob
+function resizeImage(file, maxPx = 1200) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
+                'image/jpeg', 0.82);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+        img.src = url;
+    });
+}
+
 async function uploadProductImage(event, sku, containerId) {
     const file = event.target.files[0];
     if (!file || !db) return;
@@ -181,8 +203,17 @@ async function uploadProductImage(event, sku, containerId) {
     // Reset input so the same file can be selected again if needed
     event.target.value = '';
 
-    const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
-    const filename = `${sku}/${Date.now()}.${ext}`;
+    showToast('Resizing image...', 'info');
+
+    let blob;
+    try {
+        blob = await resizeImage(file);
+    } catch (err) {
+        console.warn('Resize failed, using original:', err);
+        blob = file;
+    }
+
+    const filename = `${sku}/${Date.now()}.jpg`;
 
     showToast('Uploading image...', 'info');
 
@@ -190,7 +221,7 @@ async function uploadProductImage(event, sku, containerId) {
         // Upload to Supabase Storage bucket "product-images"
         const { error: upErr } = await db.storage
             .from('product-images')
-            .upload(filename, file, { upsert: false, contentType: file.type });
+            .upload(filename, blob, { upsert: false, contentType: 'image/jpeg' });
 
         if (upErr) throw upErr;
 
@@ -204,7 +235,7 @@ async function uploadProductImage(event, sku, containerId) {
         // Save to product_images table
         const { error: insErr } = await db
             .from('product_images')
-            .insert({ sku, image_url: publicUrl, image_title: file.name, uploaded_by: state.user.email });
+            .insert({ sku, image_url: publicUrl, image_title: file.name.replace(/\.[^.]+$/, '.jpg'), uploaded_by: state.user.email });
 
         if (insErr) throw insErr;
 
