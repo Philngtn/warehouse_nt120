@@ -284,6 +284,69 @@ function showReceipt(order) {
     $('receipt-modal').classList.add('active');
 }
 
+function printCartInvoice() {
+    if (!state.cart.length) return;
+
+    const customerName = $('cart-customer-name').value.trim();
+    const customerPhone = $('cart-customer-phone').value.trim();
+    const invoiceNumber = generateInvoiceNumber();
+    const soldBy = state.user ? state.user.email : '';
+    const dateStr = new Date().toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+    const total = state.cart.reduce((s, i) => s + i.subtotal, 0);
+
+    const itemRows = state.cart.map(item => `
+        <tr>
+            <td style="padding:5px 0;border-bottom:1px solid #ddd;">${item.name}<br><span style="font-size:11px;color:#666;">${item.sku}</span></td>
+            <td style="padding:5px 0;border-bottom:1px solid #ddd;text-align:center;">${item.qty}</td>
+            <td style="padding:5px 0;border-bottom:1px solid #ddd;text-align:right;">${formatCurrency(item.selling_price)}</td>
+            <td style="padding:5px 0;border-bottom:1px solid #ddd;text-align:right;font-weight:700;">${formatCurrency(item.subtotal)}</td>
+        </tr>
+    `).join('');
+
+    const win = window.open('', '_blank', 'width=400,height=600');
+    win.document.write(`
+        <!DOCTYPE html><html><head>
+        <title>Invoice ${invoiceNumber}</title>
+        <style>
+            body { font-family: monospace; font-size: 13px; padding: 16px; color: #000; }
+            table { width: 100%; border-collapse: collapse; }
+            th { border-bottom: 2px solid #000; font-size: 11px; padding-bottom: 6px; }
+            @media print { body { padding: 0; } }
+        </style>
+        </head><body>
+        <div style="text-align:center;margin-bottom:12px;">
+            <div style="font-size:18px;font-weight:700;">NgocThanh Auto Parts</div>
+            <div style="font-size:12px;color:#666;">${dateStr}</div>
+            <div style="font-size:12px;margin-top:4px;">Invoice: <strong>${invoiceNumber}</strong></div>
+            ${customerName ? `<div style="font-size:12px;">Customer: ${customerName}</div>` : ''}
+            ${customerPhone ? `<div style="font-size:12px;">Phone: ${customerPhone}</div>` : ''}
+        </div>
+        <table>
+            <thead><tr>
+                <th style="text-align:left;">Item</th>
+                <th style="text-align:center;">Qty</th>
+                <th style="text-align:right;">Price</th>
+                <th style="text-align:right;">Total</th>
+            </tr></thead>
+            <tbody>${itemRows}</tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;
+                    padding:12px 0;border-top:2px solid #000;margin-top:8px;">
+            <span>TOTAL</span><span>${formatCurrency(total)}</span>
+        </div>
+        <div style="font-size:11px;color:#666;text-align:center;margin-top:8px;">
+            Sold by: ${soldBy}<br>Thank you for your business!
+        </div>
+        </body></html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+}
+
 function printReceipt() {
     const content = $('printable-receipt');
     if (!content) return;

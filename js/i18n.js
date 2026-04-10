@@ -103,6 +103,7 @@ const TRANSLATIONS = {
         phone_ph:               'Phone number (optional)',
         order_notes_ph:         'Order notes (optional)',
         clear:                  'Clear',
+        print_invoice:          '🖨 Print',
         checkout:               'Checkout',
 
         // Receipt
@@ -275,6 +276,7 @@ const TRANSLATIONS = {
         phone_ph:               'Số điện thoại (tùy chọn)',
         order_notes_ph:         'Ghi chú đơn hàng (tùy chọn)',
         clear:                  'Xóa',
+        print_invoice:          '🖨 In',
         checkout:               'Thanh Toán',
 
         // Receipt
