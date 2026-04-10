@@ -8,20 +8,20 @@ Mobile-first warehouse management app for NgocThanh automotive parts store. Buil
 - **Role-based access** — admin sees cost/buying price; staff sees selling price only
 - **Cart & checkout** — add products to cart, print receipts with invoice numbers
 - **Sales history** — search by customer name, phone, or date; view past receipts
-- **Product images** — local folder (`part_images/{SKU}/`) or Google Drive, with lightbox viewer
+- **Product images** — upload photos via camera; optional Google Drive integration; horizontal scroll gallery with lightbox zoom
 - **Cross-compatibility** — track which parts fit which car models; tap to navigate between products
 - **Receive stock** — log incoming stock with PO numbers and reason tracking
 - **Admin adjust** — correct quantities with audit trail
 - **Real-time updates** — inventory changes sync across all devices instantly
-- **Excel import/export** — bulk update inventory via spreadsheet
+- **Excel import/export** — bulk update inventory via spreadsheet; auto-creates new categories/manufacturers; error rows exported as separate file
 - **Full audit trail** — every stock change logged with user, qty before/after, reason
 
 ## Tech Stack
 
 - **Frontend**: `index.html` + `css/styles.css` + `js/*.js` — vanilla JS, no build step, no frameworks
-- **Backend**: [Supabase](https://supabase.com) — PostgreSQL + Auth + Realtime subscriptions
+- **Backend**: [Supabase](https://supabase.com) — PostgreSQL + Auth + Realtime + Storage
 - **Barcode**: ZXing via CDN
-- **Deployment**: [Vercel](https://vercel.com) (static)
+- **Deployment**: [Vercel](https://vercel.com) (static — `index.html` auto-detected)
 
 ## Running Locally
 
@@ -36,7 +36,15 @@ Push to GitHub and connect the repo in Vercel. Supabase credentials are in `js/c
 
 Run `supabase-schema.sql` in the Supabase SQL Editor to create all tables, views, RLS policies, and triggers.
 
-Also run the `sales_orders` section at the bottom of the file before using checkout.
+## Supabase Storage Setup
+
+1. Storage → **New bucket** → name: `product-images` → Public: **ON**
+2. Storage → Policies → add:
+```sql
+CREATE POLICY "Authenticated upload"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'product-images');
+```
 
 ## User Roles
 
@@ -44,14 +52,15 @@ Assign roles in Supabase Auth → users → user metadata: `{ "role": "admin" }`
 
 ## Product Images
 
-**Local (testing):**
-1. Place image files in `part_images/{SKU}/` (e.g. `part_images/NT-1200/front.jpg`)
-2. Run `python3 generate-manifest.py` to update `part_images/manifest.json`
+**Camera upload (built-in):**
+- Tap the 📷 tile in any product's image gallery to take or upload a photo
+- Images are resized to max 1200px JPEG before upload to keep storage small
+- Stored in Supabase Storage `product-images` bucket
 
-**Google Drive (production):**
+**Google Drive (optional):**
 1. Create a Drive folder with SKU-named subfolders; share as "Anyone with the link can view"
 2. Set `DRIVE_FOLDER_ID` and `DRIVE_API_KEY` in `js/config.js`
-3. Images load automatically — no script needed
+3. Images load automatically with 1hr cache; tap ↻ Refresh to force reload
 
 ## File Structure
 
@@ -63,10 +72,10 @@ Assign roles in Supabase Auth → users → user metadata: `{ "role": "admin" }`
 | `js/utils.js` | `$()`, toast, formatters, debounce |
 | `js/auth.js` | Login, logout, session |
 | `js/navigation.js` | Screen switching |
-| `js/data.js` | Inventory load, dashboard stats, realtime, image manifest |
+| `js/data.js` | Inventory load, dashboard stats, realtime, Drive folder index |
 | `js/render.js` | Product/activity card renderers |
 | `js/search.js` | Search + filter logic |
-| `js/products.js` | Product detail, compatibility, image lightbox |
+| `js/products.js` | Product detail, compatibility, image gallery, lightbox, camera upload |
 | `js/receive.js` | Receive stock flow |
 | `js/adjust.js` | Admin quantity adjust |
 | `js/scanner.js` | ZXing barcode scanner |
@@ -74,6 +83,4 @@ Assign roles in Supabase Auth → users → user metadata: `{ "role": "admin" }`
 | `js/cart.js` | Cart state, checkout, receipt printing |
 | `js/sales.js` | Sales history screen |
 | `js/init.js` | DOMContentLoaded + all event listeners |
-| `part_images/` | Local product images (`{SKU}/filename.jpg`) |
-| `generate-manifest.py` | Scan `part_images/` and write `manifest.json` |
 | `supabase-schema.sql` | Full database schema (run once in Supabase) |

@@ -8,19 +8,17 @@ NgocThanh Inventory — mobile-first automotive parts warehouse management app f
 
 ## Tech Stack
 
-- **Frontend**: `index.html` (entry point) + `css/styles.css` + `js/*.js` — vanilla JS, no frameworks
-- **Backend**: Supabase (PostgreSQL + Auth + Real-time subscriptions)
+- **Frontend**: `index.html` (entry point) + `css/styles.css` + `js/*.js` — vanilla JS, no frameworks, no build step
+- **Backend**: Supabase (PostgreSQL + Auth + Realtime subscriptions + Storage)
 - **Barcode**: ZXing library via CDN (`@ArishSultan/zxing-library`)
-- **Images**: Google Drive links stored in DB
-- **Deployment**: Vercel (static file)
+- **Images**: Supabase Storage (`product-images` bucket) for camera uploads; Google Drive (optional, configured in `js/config.js`)
+- **Deployment**: Vercel (static — `index.html` is auto-detected, no `vercel.json` needed)
 
 ## Running Locally
 
-Open `warehouse-app.html` directly in a browser. Supabase credentials must be configured — either:
-1. Set meta tags `<meta name="supabase-url">` / `<meta name="supabase-key">` in the HTML head
-2. Define globals `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` before the script runs
+Open `index.html` directly in a browser. HTTPS is required for camera and barcode scanning.
 
-HTTPS is required for camera/barcode scanning to work.
+Credentials are in `js/config.js` — set `SUPABASE_URL` and `SUPABASE_ANON_KEY` there.
 
 ## Database Setup
 
@@ -28,6 +26,8 @@ Run `supabase-schema.sql` in the Supabase SQL Editor. This creates:
 - 7 tables: `manufacturers`, `product_categories`, `inventory`, `transactions`, `cross_compatibility_matrix`, `label_print_queue`, `product_images`
 - 2 views: `inventory_staff_view` (no cost column), `inventory_admin_view` (all columns)
 - RLS policies (admin vs staff), triggers for `updated_at`, realtime publication
+
+Also create a **Supabase Storage** bucket named `product-images` (public) with an authenticated INSERT policy.
 
 ## Architecture
 
@@ -38,10 +38,10 @@ Run `supabase-schema.sql` in the Supabase SQL Editor. This creates:
   - `utils.js` — `$`, `$$`, toast, formatters, `debounce`, `closeAllModals`
   - `auth.js` — login, logout, session check
   - `navigation.js` — `enterApp`, `switchScreen`
-  - `data.js` — inventory load, dashboard stats, activity, realtime
+  - `data.js` — inventory load, dashboard stats, activity, realtime, Drive folder index
   - `render.js` — product/activity card renderers, filter populators
   - `search.js` — `performSearch`, `performDashboardSearch`
-  - `products.js` — product detail, compatibility
+  - `products.js` — product detail, compatibility, image gallery, lightbox, camera upload
   - `receive.js` — stock receive flow
   - `adjust.js` — admin adjust flow
   - `scanner.js` — ZXing barcode scanner
@@ -58,20 +58,12 @@ Run `supabase-schema.sql` in the Supabase SQL Editor. This creates:
 - **Soft deletes**: `is_active` flag, never delete products.
 - **Audit trail**: Every inventory change logged in `transactions` table with user email, qty before/after, reason.
 - **State cache**: Inventory cached in `state.inventory[]`, updated via realtime. Search/filter operates on cache. Debounced at 300ms.
-
-## Environment Variables (.env — never commit)
-
-```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your_public_anon_key
-```
+- **Image sources**: Supabase Storage (uploaded via camera) + Google Drive (optional, lazy-loaded per SKU with 1hr localStorage cache). Combined in `loadProductImages()`.
+- **Image upload**: Client-side resize to max 1200px JPEG at 82% quality before uploading to Supabase Storage.
 
 ## Git Workflow
 
-After making any file changes, automatically:
-1. `git add` the changed files
-2. `git commit` with a descriptive message
-3. `git push origin main`
+After making any file changes, use the `/commit` skill to stage, commit, and push. This handles the full git add → commit → push flow automatically.
 
 Do this without asking for confirmation unless the change is destructive or ambiguous.
 
