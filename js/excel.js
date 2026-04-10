@@ -176,7 +176,8 @@ async function importFromExcel() {
 
         btn.innerHTML = '<span class="spinner"></span> Uploading...';
         const errors = [];
-        let imported = 0, updated = 0;
+        const errorRows = [];
+        let imported = 0, updated = 0, skipped = 0;
         const txnBatch = []; // Collect transactions; bulk-insert at end
 
         // Process each row
@@ -189,8 +190,16 @@ async function importFromExcel() {
                 const sku = String(row['SKU'] || '').trim();
                 const name = String(row['Name'] || '').trim();
 
-                if (!sku) { errors.push(`Row ${rowNum}: SKU is required`); continue; }
-                if (!name) { errors.push(`Row ${rowNum}: Name is required`); continue; }
+                if (!sku) {
+                    errors.push(`Row ${rowNum}: SKU is required`);
+                    errorRows.push({ ...row, 'Import Error': 'SKU is required' });
+                    skipped++; continue;
+                }
+                if (!name) {
+                    errors.push(`Row ${rowNum} (${sku}): Name is required`);
+                    errorRows.push({ ...row, 'Import Error': 'Name is required' });
+                    skipped++; continue;
+                }
 
                 // Look up or create manufacturer
                 let manufacturerId = null;
@@ -202,14 +211,36 @@ async function importFromExcel() {
                     } else {
                         const { data: newMfg, error: mfgErr } = await db
                             .from('manufacturers').insert({ name: mfgName }).select();
-                        if (mfgErr) { errors.push(`Row ${rowNum}: Failed to create manufacturer "${mfgName}"`); continue; }
+                        if (mfgErr) {
+                            const reason = `Failed to create manufacturer "${mfgName}"`;
+                            errors.push(`Row ${rowNum} (${sku}): ${reason}`);
+                            errorRows.push({ ...row, 'Import Error': reason });
+                            skipped++; continue;
+                        }
                         if (newMfg?.length) { manufacturerId = newMfg[0].id; mfgMap.set(mfgKey, manufacturerId); }
                     }
                 }
 
-                // Look up category
+                // Look up or create category (mirrors manufacturer pattern)
+                let categoryId = null;
                 const catName = String(row['Category'] || '').trim();
-                const categoryId = catName ? (catMap.get(catName.toLowerCase()) || null) : null;
+                if (catName) {
+                    const catKey = catName.toLowerCase();
+                    if (catMap.has(catKey)) {
+                        categoryId = catMap.get(catKey);
+                    } else {
+                        const { data: newCat, error: catErr } = await db
+                            .from('product_categories').insert({ name: catName }).select();
+                        if (catErr) {
+                            const reason = `Failed to create category "${catName}"`;
+                            errors.push(`Row ${rowNum}: ${reason}`);
+                            errorRows.push({ ...row, 'Import Error': reason });
+                            skipped++;
+                            continue;
+                        }
+                        if (newCat?.length) { categoryId = newCat[0].id; catMap.set(catKey, categoryId); }
+                    }
+                }
 
                 const inventoryRow = {
                     sku,
@@ -232,7 +263,11 @@ async function importFromExcel() {
 
                 const { error: upsertErr } = await db
                     .from('inventory').upsert(inventoryRow, { onConflict: 'sku' });
-                if (upsertErr) { errors.push(`Row ${rowNum} (${sku}): ${upsertErr.message}`); continue; }
+                if (upsertErr) {
+                    errors.push(`Row ${rowNum} (${sku}): ${upsertErr.message}`);
+                    errorRows.push({ ...row, 'Import Error': upsertErr.message });
+                    skipped++; continue;
+                }
 
                 // Queue transaction log entry (bulk-inserted after the loop)
                 if (existingMap.has(sku)) {
@@ -251,6 +286,8 @@ async function importFromExcel() {
                 }
             } catch (err) {
                 errors.push(`Row ${rowNum}: ${err.message}`);
+                errorRows.push({ ...row, 'Import Error': err.message });
+                skipped++;
             }
         }
 
@@ -260,6 +297,14 @@ async function importFromExcel() {
             if (txnErr) console.warn('Transaction batch log failed:', txnErr);
         }
 
+        // Export failed rows as Excel for easy correction and re-upload
+        if (errorRows.length) {
+            const errWb = XLSX.utils.book_new();
+            const errWs = XLSX.utils.json_to_sheet(errorRows);
+            XLSX.utils.book_append_sheet(errWb, errWs, 'Import Errors');
+            XLSX.writeFile(errWb, `NgocThanh_ImportErrors_${getDateTimeStamp()}.xlsx`);
+        }
+
         // Show results
         const totalProcessed = imported + updated;
         if (errors.length > 0) {
@@ -267,9 +312,12 @@ async function importFromExcel() {
             errorsEl.style.display = 'block';
         }
 
+        const skippedMsg = skipped > 0
+            ? ` | <span style="color:var(--danger)">⚠ ${skipped} row(s) skipped — fix &amp; re-upload the error file</span>`
+            : '';
         msgEl.innerHTML = wipeMode
-            ? `✓ Wiped &amp; Imported: ${totalProcessed} products (old data permanently deleted)`
-            : `✓ Imported: ${imported} | Updated: ${updated} | Total: ${totalProcessed}`;
+            ? `✓ Wiped &amp; Imported: ${totalProcessed} products${skippedMsg}`
+            : `✓ Imported: ${imported} | Updated: ${updated} | Total: ${totalProcessed}${skippedMsg}`;
         msgEl.style.color = 'var(--success)';
         msgEl.style.display = 'block';
 
