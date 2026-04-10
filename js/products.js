@@ -119,14 +119,10 @@ async function fetchDriveImages(sku) {
 }
 
 async function loadProductImages(sku, containerId = 'modal-images') {
-    // 1. Local manifest images
-    const localUrls = (state.localImages && state.localImages[sku]) || [];
-    const localImgs = localUrls.map(url => ({ image_url: url, image_title: url.split('/').pop() }));
-
-    // 2. Google Drive images (live, auto-updates when Drive folder changes)
+    // 1. Google Drive images (live, auto-updates when Drive folder changes)
     const driveImgs = await fetchDriveImages(sku);
 
-    // 3. Supabase product_images table
+    // 2. Supabase product_images table
     let dbImgs = [];
     if (db) {
         const { data } = await db
@@ -137,7 +133,7 @@ async function loadProductImages(sku, containerId = 'modal-images') {
         dbImgs = data || [];
     }
 
-    const allImgs = [...driveImgs, ...localImgs, ...dbImgs];
+    const allImgs = [...driveImgs, ...dbImgs];
 
     const refreshBtn = CONFIG.DRIVE_FOLDER_ID
         ? `<button onclick="refreshDriveImages('${escapeHtml(sku)}')"

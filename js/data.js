@@ -1,13 +1,6 @@
 // ============================================================
 // DATA LOADING
 // ============================================================
-async function loadImageManifest() {
-    try {
-        const res = await fetch('part_images/manifest.json');
-        if (res.ok) state.localImages = await res.json();
-    } catch (_) {}
-}
-
 // Drive folder index — cached in localStorage, refreshed every DRIVE_CACHE_TTL ms.
 // Only one API call per TTL period regardless of how often the page loads.
 const DRIVE_CACHE_KEY = 'nt_drive_folder_index';
@@ -46,7 +39,7 @@ async function loadInitialData() {
     showLoading();
     try {
         // Inventory must load first so loadDashboardStats can derive counts from cache
-        await Promise.all([loadCategories(), loadManufacturers(), loadInventory(), loadImageManifest(), loadDriveFolderIndex()]);
+        await Promise.all([loadCategories(), loadManufacturers(), loadInventory(), loadDriveFolderIndex()]);
         await Promise.all([loadDashboardStats(), loadRecentActivity()]);
     } catch (err) {
         console.error('Error loading data:', err);

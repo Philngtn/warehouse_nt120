@@ -51,8 +51,6 @@ const state = {
     cart: [],            // [{sku, name, qty, selling_price, subtotal}]
     salesPage: 0,
     salesPageSize: 20,
-    // Local images (loaded from part_images/manifest.json)
-    localImages: {},       // { sku: ['url', ...] }
     // Google Drive: SKU folder index fetched once at startup
     driveFolderIndex: {},  // { sku: folderId }
     // Google Drive: per-SKU image URL cache (populated lazily on modal open)
