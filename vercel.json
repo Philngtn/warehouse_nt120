@@ -1,7 +1,0 @@
-{
-  "outputDirectory": ".",
-  "rewrites": [
-    { "source": "/", "destination": "/warehouse-app.html" },
-    { "source": "/(.*)", "destination": "/warehouse-app.html" }
-  ]
-}
