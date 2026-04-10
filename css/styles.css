@@ -817,17 +817,24 @@ label {
 
 /* Image gallery */
 .image-gallery {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-direction: row;
     gap: 8px;
     margin-top: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
 }
+.image-gallery::-webkit-scrollbar { display: none; }
 .image-gallery .img-thumb {
-    aspect-ratio: 1;
+    flex: 0 0 100px;
+    height: 100px;
     border-radius: var(--radius-sm);
     background: var(--bg-input);
     overflow: hidden;
     border: 1px solid var(--border);
+    scroll-snap-align: start;
 }
 .image-gallery .img-thumb img {
     width: 100%;
@@ -835,6 +842,8 @@ label {
     object-fit: cover;
 }
 .image-gallery .img-thumb--add {
+    flex: 0 0 100px;
+    height: 100px;
     border: 2px dashed var(--border);
     background: none;
     display: flex;
@@ -843,6 +852,7 @@ label {
     font-size: 44px;
     cursor: pointer;
     color: var(--text-muted);
+    scroll-snap-align: start;
     transition: border-color 0.15s, color 0.15s;
 }
 .image-gallery .img-thumb--add:hover {
