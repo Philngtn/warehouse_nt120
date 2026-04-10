@@ -147,7 +147,7 @@ async function loadProductImages(sku, containerId = 'modal-images') {
         : '';
 
     const cameraTile = `<label class="img-thumb img-thumb--add" title="Take / upload photo">
-        📷<input type="file" accept="image/*" capture="environment" style="display:none;"
+        <span>📷</span><input type="file" accept="image/*" capture="environment" style="display:none;"
                  onchange="uploadProductImage(event,'${escapeHtml(sku)}','${escapeHtml(containerId)}')">
     </label>`;
 
