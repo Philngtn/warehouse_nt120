@@ -138,7 +138,6 @@ async function loadProductImages(sku, containerId = 'modal-images') {
     }
 
     const allImgs = [...driveImgs, ...localImgs, ...dbImgs];
-    if (!allImgs.length) return;
 
     const refreshBtn = CONFIG.DRIVE_FOLDER_ID
         ? `<button onclick="refreshDriveImages('${escapeHtml(sku)}')"
@@ -147,13 +146,16 @@ async function loadProductImages(sku, containerId = 'modal-images') {
            </button>`
         : '';
 
+    const cameraBtn = `<label style="color:var(--accent);font-size:13px;cursor:pointer;padding:0;margin-left:8px;display:inline-flex;align-items:center;" title="Take / upload photo">
+        📷<input type="file" accept="image/*" capture="environment" style="display:none;"
+                 onchange="uploadProductImage(event,'${escapeHtml(sku)}','${escapeHtml(containerId)}')">
+    </label>`;
+
     const container = $(containerId);
-    // Encode the image array for inline onclick
-    const imgsJson = escapeHtml(JSON.stringify(allImgs));
     let html = `<div style="margin-top:16px;">
-        <div style="display:flex;align-items:center;">
+        <div style="display:flex;align-items:center;gap:4px;">
             <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Images</label>
-            ${refreshBtn}
+            ${cameraBtn}${refreshBtn}
         </div>
         <div class="image-gallery">`;
     allImgs.forEach((img, i) => {
@@ -170,6 +172,50 @@ async function refreshDriveImages(sku) {
     delete state.driveImageCache[sku];
     try { localStorage.removeItem(DRIVE_IMG_CACHE_PREFIX + sku); } catch (_) {}
     await loadProductImages(sku);
+}
+
+async function uploadProductImage(event, sku, containerId) {
+    const file = event.target.files[0];
+    if (!file || !db) return;
+
+    // Reset input so the same file can be selected again if needed
+    event.target.value = '';
+
+    const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+    const filename = `${sku}/${Date.now()}.${ext}`;
+
+    showToast('Uploading image...', 'info');
+
+    try {
+        // Upload to Supabase Storage bucket "product-images"
+        const { error: upErr } = await db.storage
+            .from('product-images')
+            .upload(filename, file, { upsert: false, contentType: file.type });
+
+        if (upErr) throw upErr;
+
+        // Get public URL
+        const { data: urlData } = db.storage
+            .from('product-images')
+            .getPublicUrl(filename);
+
+        const publicUrl = urlData.publicUrl;
+
+        // Save to product_images table
+        const { error: insErr } = await db
+            .from('product_images')
+            .insert({ sku, image_url: publicUrl, image_title: file.name, uploaded_by: state.user.email });
+
+        if (insErr) throw insErr;
+
+        showToast('Image uploaded', 'success');
+        // Reload images section to show the new photo
+        await loadProductImages(sku, containerId);
+
+    } catch (err) {
+        console.error('Upload failed:', err);
+        showToast('Upload failed: ' + err.message, 'error');
+    }
 }
 
 // ============================================================
