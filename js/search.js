@@ -13,12 +13,19 @@ async function performSearch() {
     let results = state.inventory;
 
     if (term) {
-        results = results.filter(p =>
-            (p.sku && p.sku.toLowerCase().includes(term)) ||
-            (p.name && p.name.toLowerCase().includes(term)) ||
-            (p.manufacturer_code && p.manufacturer_code.toLowerCase().includes(term)) ||
-            (p.manufacturer_name && p.manufacturer_name.toLowerCase().includes(term))
-        );
+        const termPlain = removeDiacritics(term);
+        results = results.filter(p => {
+            const name = p.name ? p.name.toLowerCase() : '';
+            const sku = p.sku ? p.sku.toLowerCase() : '';
+            const mfrCode = p.manufacturer_code ? p.manufacturer_code.toLowerCase() : '';
+            const mfrName = p.manufacturer_name ? p.manufacturer_name.toLowerCase() : '';
+            return sku.includes(term) ||
+                   name.includes(term) ||
+                   mfrCode.includes(term) ||
+                   mfrName.includes(term) ||
+                   removeDiacritics(name).includes(termPlain) ||
+                   removeDiacritics(mfrName).includes(termPlain);
+        });
     }
 
     if (categoryId) {

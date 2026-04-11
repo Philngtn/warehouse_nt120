@@ -56,6 +56,12 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// Strips Vietnamese (and other) diacritics so "ac quy" matches "Ắc Quy"
+function removeDiacritics(str) {
+    if (!str) return '';
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+}
+
 function debounce(fn, ms) {
     let timer;
     return function(...args) {
