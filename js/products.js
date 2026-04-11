@@ -83,18 +83,19 @@ function startInlineEdit(el, sku, field) {
         <input type="text" class="inline-edit-input" value="${escapeHtml(currentVal)}"
                style="flex:1;min-width:0;" maxlength="100">
         <span class="inline-edit-controls">
-            <button class="inline-save-btn" onclick="saveInlineEdit(this.closest('.editable-field'),'${escapeHtml(sku)}','${field}')" aria-label="Save">✓</button>
-            <button class="inline-cancel-btn" onclick="cancelInlineEdit(this.closest('.editable-field'),'${escapeHtml(sku)}','${field}')" aria-label="Cancel">✕</button>
+            <button class="inline-save-btn" onclick="event.stopPropagation();saveInlineEdit(this.closest('.editable-field'),'${escapeHtml(sku)}','${field}')" aria-label="Save">✓</button>
+            <button class="inline-cancel-btn" onclick="event.stopPropagation();cancelInlineEdit(this.closest('.editable-field'),'${escapeHtml(sku)}','${field}')" aria-label="Cancel">✕</button>
         </span>`;
 
     const input = el.querySelector('input');
     input.focus();
     input.select();
+    input.addEventListener('click', e => e.stopPropagation());
 
     // Save on Enter, cancel on Escape
     input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') saveInlineEdit(el, sku, field);
-        if (e.key === 'Escape') cancelInlineEdit(el, sku, field);
+        if (e.key === 'Enter') { e.stopPropagation(); saveInlineEdit(el, sku, field); }
+        if (e.key === 'Escape') { e.stopPropagation(); cancelInlineEdit(el, sku, field); }
     });
 }
 
