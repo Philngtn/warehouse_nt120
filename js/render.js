@@ -165,7 +165,7 @@ function renderDetailGrid(product) {
                 </div>
                 <div class="detail-field">
                     <label>${t('location')}</label>
-                    <div class="field-value">${escapeHtml(product.location || 'N/A')}</div>
+                    <div class="field-value editable-field" onclick="startInlineEdit(this,'${escapeHtml(product.sku)}','location')" title="${t('tap_to_edit')}">${escapeHtml(product.location || '')} <span class="edit-pencil">✏</span></div>
                 </div>
             </div>
             <div class="detail-row">
@@ -191,7 +191,7 @@ function renderDetailGrid(product) {
                 </div>
                 <div class="detail-field">
                     <label>${t('mfr_code')}</label>
-                    <div class="field-value">${escapeHtml(product.manufacturer_code || 'N/A')}</div>
+                    <div class="field-value editable-field" onclick="startInlineEdit(this,'${escapeHtml(product.sku)}','manufacturer_code')" title="${t('tap_to_edit')}">${escapeHtml(product.manufacturer_code || '')} <span class="edit-pencil">✏</span></div>
                 </div>
             </div>
         </div>`;

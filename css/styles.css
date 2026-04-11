@@ -538,6 +538,42 @@ label {
     line-height: 1.3;
     word-break: break-word;
 }
+.editable-field {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 2px;
+    min-height: 44px;
+}
+.editable-field:active { background: var(--bg-input); border-radius: 4px; }
+.edit-pencil { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.inline-edit-input {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--bg-input);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    color: var(--text-primary);
+}
+.inline-edit-controls { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.inline-save-btn, .inline-cancel-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.inline-save-btn { background: var(--success); color: #fff; }
+.inline-cancel-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
 .detail-actions {
     display: flex;
     flex-wrap: wrap;

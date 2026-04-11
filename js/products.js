@@ -70,6 +70,81 @@ async function openProductDetail(sku) {
     loadProductImages(product.sku);
 }
 
+// ============================================================
+// INLINE FIELD EDIT (location, manufacturer_code)
+// ============================================================
+function startInlineEdit(el, sku, field) {
+    if (el.querySelector('input')) return; // already editing
+
+    const product = state.inventory.find(p => p.sku === sku);
+    const currentVal = (product && product[field]) ? product[field] : '';
+
+    el.innerHTML = `
+        <input type="text" class="inline-edit-input" value="${escapeHtml(currentVal)}"
+               style="flex:1;min-width:0;" maxlength="100">
+        <span class="inline-edit-controls">
+            <button class="inline-save-btn" onclick="saveInlineEdit(this.closest('.editable-field'),'${escapeHtml(sku)}','${field}')" aria-label="Save">✓</button>
+            <button class="inline-cancel-btn" onclick="cancelInlineEdit(this.closest('.editable-field'),'${escapeHtml(sku)}','${field}')" aria-label="Cancel">✕</button>
+        </span>`;
+
+    const input = el.querySelector('input');
+    input.focus();
+    input.select();
+
+    // Save on Enter, cancel on Escape
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveInlineEdit(el, sku, field);
+        if (e.key === 'Escape') cancelInlineEdit(el, sku, field);
+    });
+}
+
+async function saveInlineEdit(el, sku, field) {
+    const input = el ? el.querySelector('input') : null;
+    if (!input) return;
+
+    const newVal = input.value.trim();
+    const product = state.inventory.find(p => p.sku === sku);
+    if (!product) return;
+    const oldVal = product[field] || '';
+
+    if (newVal === oldVal) { cancelInlineEdit(el, sku, field); return; }
+
+    // Disable controls during save
+    el.querySelectorAll('button').forEach(b => b.disabled = true);
+
+    const { error } = await db.from('inventory').update({ [field]: newVal || null }).eq('sku', sku);
+    if (error) {
+        showToast(t('save_failed'), 'error');
+        el.querySelectorAll('button').forEach(b => b.disabled = false);
+        return;
+    }
+
+    // Log to transactions for audit trail
+    await db.from('transactions').insert({
+        type: 'updated',
+        sku,
+        quantity_change: 0,
+        qty_before: product.qty,
+        qty_after: product.qty,
+        user_email: state.user.email,
+        user_action: 'edit_field',
+        notes: `${field}: "${oldVal}" → "${newVal}"`,
+    });
+
+    // Update local cache
+    const idx = state.inventory.findIndex(p => p.sku === sku);
+    if (idx >= 0) state.inventory[idx][field] = newVal || null;
+
+    showToast(t('field_updated'), 'success');
+    openProductDetail(sku);
+}
+
+function cancelInlineEdit(el, sku, field) {
+    const product = state.inventory.find(p => p.sku === sku);
+    const val = (product && product[field]) ? escapeHtml(product[field]) : '';
+    el.innerHTML = `${val} <span class="edit-pencil">✏</span>`;
+}
+
 const DRIVE_IMG_CACHE_PREFIX = 'nt_drive_imgs_';
 
 async function fetchDriveImages(sku) {
