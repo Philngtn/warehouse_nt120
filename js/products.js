@@ -102,6 +102,9 @@ function closeFieldEditPopup() {
     $('field-edit-overlay').style.display = 'none';
     _fieldEdit.sku = null;
     _fieldEdit.field = null;
+    const saveBtn = $('field-edit-save-btn');
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
 }
 
 async function saveFieldEditPopup() {
