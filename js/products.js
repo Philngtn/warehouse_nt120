@@ -71,56 +71,63 @@ async function openProductDetail(sku) {
 }
 
 // ============================================================
-// INLINE FIELD EDIT (location, manufacturer_code)
+// FIELD EDIT POPUP (location, manufacturer_code)
 // ============================================================
-function startInlineEdit(el, sku, field) {
-    if (el.querySelector('input')) return; // already editing
+const _fieldEdit = { sku: null, field: null };
 
+function startInlineEdit(el, sku, field) {
+    event.stopPropagation();
     const product = state.inventory.find(p => p.sku === sku);
     const currentVal = (product && product[field]) ? product[field] : '';
+    const label = field === 'location' ? t('location') : t('mfr_code');
 
-    el.innerHTML = `
-        <input type="text" class="inline-edit-input" value="${escapeHtml(currentVal)}"
-               style="flex:1;min-width:0;" maxlength="100">
-        <span class="inline-edit-controls">
-            <button class="inline-save-btn" onclick="event.stopPropagation();saveInlineEdit(this.closest('.editable-field'),'${escapeHtml(sku)}','${field}')" aria-label="Save">✓</button>
-            <button class="inline-cancel-btn" onclick="event.stopPropagation();cancelInlineEdit(this.closest('.editable-field'),'${escapeHtml(sku)}','${field}')" aria-label="Cancel">✕</button>
-        </span>`;
+    _fieldEdit.sku = sku;
+    _fieldEdit.field = field;
 
-    const input = el.querySelector('input');
-    input.focus();
-    input.select();
-    input.addEventListener('click', e => e.stopPropagation());
+    $('field-edit-label').textContent = label;
+    const input = $('field-edit-input');
+    input.value = currentVal;
 
-    // Save on Enter, cancel on Escape
-    input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.stopPropagation(); saveInlineEdit(el, sku, field); }
-        if (e.key === 'Escape') { e.stopPropagation(); cancelInlineEdit(el, sku, field); }
-    });
+    const overlay = $('field-edit-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+
+    input.onkeydown = e => {
+        if (e.key === 'Enter') saveFieldEditPopup();
+        if (e.key === 'Escape') closeFieldEditPopup();
+    };
 }
 
-async function saveInlineEdit(el, sku, field) {
-    const input = el ? el.querySelector('input') : null;
-    if (!input) return;
+function closeFieldEditPopup() {
+    $('field-edit-overlay').style.display = 'none';
+    _fieldEdit.sku = null;
+    _fieldEdit.field = null;
+}
 
-    const newVal = input.value.trim();
+async function saveFieldEditPopup() {
+    const { sku, field } = _fieldEdit;
+    if (!sku || !field) return;
+
+    const newVal = $('field-edit-input').value.trim();
     const product = state.inventory.find(p => p.sku === sku);
     if (!product) return;
     const oldVal = product[field] || '';
 
-    if (newVal === oldVal) { cancelInlineEdit(el, sku, field); return; }
+    if (newVal === oldVal) { closeFieldEditPopup(); return; }
 
-    // Disable controls during save
-    el.querySelectorAll('button').forEach(b => b.disabled = true);
+    const saveBtn = $('field-edit-save-btn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner"></span>';
 
     const { error } = await db.from('inventory').update({ [field]: newVal || null }).eq('sku', sku);
     if (error) {
         showToast(t('save_failed'), 'error');
-        el.querySelectorAll('button').forEach(b => b.disabled = false);
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
         return;
     }
 
-    // Log to transactions for audit trail
+    // Audit trail
     await db.from('transactions').insert({
         type: 'updated',
         sku,
@@ -136,14 +143,9 @@ async function saveInlineEdit(el, sku, field) {
     const idx = state.inventory.findIndex(p => p.sku === sku);
     if (idx >= 0) state.inventory[idx][field] = newVal || null;
 
+    closeFieldEditPopup();
     showToast(t('field_updated'), 'success');
     openProductDetail(sku);
-}
-
-function cancelInlineEdit(el, sku, field) {
-    const product = state.inventory.find(p => p.sku === sku);
-    const val = (product && product[field]) ? escapeHtml(product[field]) : '';
-    el.innerHTML = `${val} <span class="edit-pencil">✏</span>`;
 }
 
 const DRIVE_IMG_CACHE_PREFIX = 'nt_drive_imgs_';

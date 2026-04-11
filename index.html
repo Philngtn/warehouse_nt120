@@ -579,6 +579,20 @@
         </div>
     </div>
 
+    <!-- ============================================================
+         FIELD EDIT POPUP
+         ============================================================ -->
+    <div id="field-edit-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:400;align-items:center;justify-content:center;">
+        <div id="field-edit-popup">
+            <div id="field-edit-label" style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;"></div>
+            <input type="text" id="field-edit-input" maxlength="200" style="width:100%;font-size:16px;padding:10px 12px;border:2px solid var(--accent);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="closeFieldEditPopup()">Cancel</button>
+                <button class="btn btn-primary" style="flex:1;" id="field-edit-save-btn" onclick="saveFieldEditPopup()">Save</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Image Lightbox -->
     <div id="lightbox">
         <button id="lightbox-close">✕</button>

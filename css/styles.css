@@ -549,31 +549,19 @@ label {
 }
 .editable-field:active { background: var(--bg-input); border-radius: 4px; }
 .edit-pencil { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
-.inline-edit-input {
-    flex: 1;
-    min-width: 0;
-    font-size: 14px;
-    font-weight: 600;
-    background: var(--bg-input);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-sm);
-    padding: 4px 8px;
-    color: var(--text-primary);
+#field-edit-popup {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 20px;
+    width: calc(100% - 48px);
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    animation: fadeInScale 0.15s ease-out;
 }
-.inline-edit-controls { display: inline-flex; gap: 4px; flex-shrink: 0; }
-.inline-save-btn, .inline-cancel-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
 }
-.inline-save-btn { background: var(--success); color: #fff; }
-.inline-cancel-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
 .detail-actions {
     display: flex;
     flex-wrap: wrap;
